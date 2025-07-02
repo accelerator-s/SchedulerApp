@@ -2,7 +2,7 @@
 
 这是一个使用 C++、GTKmm 3.0 和 CMake 构建的图形化日程管理软件。
 
-## 功能特性 (框架)
+## 功能特性
 
 *   **图形用户界面**: 基于GTK+ 3，使用Glade进行设计。
 *   **账户管理**: 支持用户注册和登录。
@@ -27,37 +27,19 @@ sudo apt update
 sudo apt install build-essential cmake libgtkmm-3.0-dev
 ```
 
-**在Fedora/CentOS上安装依赖:**
-```bash
-sudo dnf install gcc-c++ cmake gtkmm30-devel
-```
-
 ## 编译与运行
 
 1.  **克隆或下载项目代码。**
 
-2.  **创建构建目录并进入:**
-    ```bash
-    mkdir build
-    cd build
-    ```
+2. **使用自动化脚本 fastMake.sh 快速编译。**
 
-3.  **运行CMake生成Makefile:**
-    ```bash
-    cmake ..
-    ```
+   ```bash
+   ./fastMake.sh
+   ```
 
-4.  **编译项目:**
-    ```bash
-    make
-    ```
+3. **运行程序:**
+   可执行文件 `SchedulerApp` 会生成在 `output/Debug` 或者 `output/Release` 目录下，双击即可运行。
 
-5.  **运行程序:**
-    可执行文件 `SchedulerApp` 会生成在 `build` 目录下。
-    ```bash
-    ./SchedulerApp
-    ```
-    任务提醒信息将会打印到您运行此命令的终端上。
 
 ## 使用示例
 
@@ -68,9 +50,10 @@ sudo dnf install gcc-c++ cmake gtkmm30-devel
     *   **添加任务**: 点击 "添加任务"，在弹出的对话框中填写信息后点击 "确定"。
     *   **删除任务**: 在列表中选中一个任务，然后点击 "删除任务"。
     *   **帮助**: 点击 "帮助" 查看软件说明。
-    *   **注销**: 点击 "注销" 返回登录界面。
+    *   **注销**: 点击 "注销" 退出程序。
 
 ## 注意事项
 
-*   **MD5加密**: 当前的MD5实现是一个占位符，**极不安全**。在正式项目中，请务必替换为一个成熟的加密库实现（如 OpenSSL）。
-*   **TODO**: 代码中所有标记为 `// TODO` 的部分是需要您根据需求进一步实现的核心业务逻辑。当前框架主要解决了UI的搭建和交互流程。
+*   **MD5加密**: 当前的MD5实现是一个占位符，**极不安全**。需要替换为一个成熟的加密库实现（如 OpenSSL）。
+*   **TODO**: 代码中所有标记为 `// TODO` 的部分是需要进一步实现的核心逻辑。==当前框架主要解决了UI的搭建和交互流程==。
+
