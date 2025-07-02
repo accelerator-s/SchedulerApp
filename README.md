@@ -27,11 +27,6 @@ sudo apt update
 sudo apt install build-essential cmake libgtkmm-3.0-dev
 ```
 
-**在Fedora/CentOS上安装依赖:**
-```bash
-sudo dnf install gcc-c++ cmake gtkmm30-devel
-```
-
 ## 编译与运行
 
 1.  **克隆或下载项目代码。**
@@ -72,5 +67,5 @@ sudo dnf install gcc-c++ cmake gtkmm30-devel
 
 ## 注意事项
 
-*   **MD5加密**: 当前的MD5实现是一个占位符，**极不安全**。在正式项目中，请务必替换为一个成熟的加密库实现（如 OpenSSL）。
-*   **TODO**: 代码中所有标记为 `// TODO` 的部分是需要您根据需求进一步实现的核心业务逻辑。当前框架主要解决了UI的搭建和交互流程。
+*   **MD5加密**: 当前的MD5实现是一个占位符，**极不安全**。需要替换为一个成熟的加密库实现（如 OpenSSL）。
+*   **TODO**: 代码中所有标记为 `// TODO` 的部分是需要进一步实现的核心逻辑。当前框架主要解决了UI的搭建和交互流程。
