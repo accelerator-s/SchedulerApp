@@ -1,0 +1,3 @@
+/home/accelerator/桌面/2025暑假/project/SchedulerApp/build/CMakeFiles/SchedulerApp.dir
+/home/accelerator/桌面/2025暑假/project/SchedulerApp/build/CMakeFiles/edit_cache.dir
+/home/accelerator/桌面/2025暑假/project/SchedulerApp/build/CMakeFiles/rebuild_cache.dir
