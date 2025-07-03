@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "../output/Debug/SchedulerApp"
-  "../output/Debug/SchedulerApp.pdb"
+  "../output/Release/SchedulerApp"
+  "../output/Release/SchedulerApp.pdb"
   "CMakeFiles/SchedulerApp.dir/src/SchedulerApp.cpp.o"
   "CMakeFiles/SchedulerApp.dir/src/SchedulerApp.cpp.o.d"
   "CMakeFiles/SchedulerApp.dir/src/TaskManager.cpp.o"
