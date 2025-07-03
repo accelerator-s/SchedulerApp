@@ -3,6 +3,8 @@
 #include <string>
 #include <ctime>
 
+using namespace std;
+
 // 任务优先级枚举
 enum class Priority { HIGH, MEDIUM, LOW };
 
@@ -11,7 +13,7 @@ enum class Category { STUDY, ENTERTAINMENT, LIFE };
 
 struct Task {
     long long id;
-    std::string name;
+    string name;
     time_t startTime;
     Priority priority;
     Category category;

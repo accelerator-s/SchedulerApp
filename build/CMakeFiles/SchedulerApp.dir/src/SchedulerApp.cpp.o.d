@@ -1495,4 +1495,6 @@ CMakeFiles/SchedulerApp.dir/src/SchedulerApp.cpp.o: \
  /home/accelerator/桌面/2025暑假/project/SchedulerApp/src/UserManager.h \
  /home/accelerator/桌面/2025暑假/project/SchedulerApp/src/TaskManager.h \
  /home/accelerator/桌面/2025暑假/project/SchedulerApp/src/Task.h \
+ /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
+ /usr/include/c++/13/bits/this_thread_sleep.h /usr/include/c++/13/atomic \
  /usr/include/c++/13/iostream

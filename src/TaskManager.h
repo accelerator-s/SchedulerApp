@@ -3,30 +3,36 @@
 #include "Task.h"
 #include <vector>
 #include <string>
+#include <thread>   // 用于线程
+#include <mutex>    // 用于互斥锁
+#include <atomic>   // 用于原子操作
 
 class TaskManager {
 public:
     TaskManager();
-    void setCurrentUser(const std::string& username);
+    void setCurrentUser(const string& username);
     bool addTask(const Task& task);
     bool deleteTask(long long taskId);
-    std::vector<Task> getAllTasks() const;
+    vector<Task> getAllTasks() const;
     void startReminderThread();
     void stopReminderThread();
 
 private:
-    std::string tasks_file;
-    std::vector<Task> tasks;
+    string tasks_file;
+    vector<Task> tasks;
     long long next_id;
-    std::string current_user;
+    string current_user;
 
+    // 文件操作
     void loadTasks();
     void saveTask(const Task& task);
     void rewriteTasksFile();
+    
+    // 提醒线程相关
     void reminderCheckLoop();
 
-    // TODO: 添加线程和互斥锁成员
-    // std::thread reminder_thread;
-    // std::mutex tasks_mutex;
-    // std::atomic<bool> running;
+    // 线程和互斥锁成员
+    thread reminder_thread;
+    mutable mutex tasks_mutex; // 可变的互斥锁，以便在const成员函数中使用
+    atomic<bool> m_running;
 };

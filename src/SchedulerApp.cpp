@@ -105,7 +105,7 @@ void SchedulerApp::connect_signals() {
     add_task_dialog->signal_response().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_dialog_response));
 }
 
-// 信号处理函数实现 (已更新)
+// 信号处理函数实现
 void SchedulerApp::on_login_button_clicked() {
     string username = login_username_entry->get_text();
     string password = login_password_entry->get_text();
