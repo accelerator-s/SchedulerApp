@@ -187,7 +187,7 @@ void TaskManager::rewriteTasksFile() {
     file.close();
 }
 
-// --- 守护进程部分（占位符） ---
+// --- 守护进程部分 ---
 
 void TaskManager::startReminderThread() {
     // TODO: 创建并启动一个后台线程，该线程运行 reminderCheckLoop()
