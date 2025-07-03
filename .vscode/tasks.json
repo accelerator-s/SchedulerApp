@@ -2,83 +2,21 @@
     "version": "2.0.0",
     "tasks": [
         {
+            // 这个 label 就是任务的名称，可以被 launch.json 引用
             "label": "build",
-            "type": "shell",
+            
+            // 这个 type 告诉 VS Code 这个任务由 CMake Tools 扩展提供
+            "type": "cmake",
+            
+            // "command" 指定了要执行的具体 CMake 命令
+            "command": "build",
+            
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "windows": {
-                "command": "powershell",
-                "args": [
-                    "-c",
-                    "mingw32-make"
-                ]
-            },
-            "linux": {
-                "command": "bash",
-                "args": [
-                    "-c",
-                    "make"
-                ]
-            },
-            "osx": {
-                "command": "bash",
-                "args": [
-                    "-c",
-                    "make"
-                ]
-            }
-        },
-        {
-            "label": "build & run",
-            "type": "shell",
-            "windows": {
-                "command": "powershell",
-                "args": [
-                    "-c",
-                    "'mingw32-make run'"
-                ]
-            },
-            "linux": {
-                "command": "bash",
-                "args": [
-                    "-c",
-                    "'make run'"
-                ]
-            },
-            "osx": {
-                "command": "bash",
-                "args": [
-                    "-c",
-                    "'make run'"
-                ]
-            }
-        },
-        {
-            "label": "clean",
-            "type": "shell",
-            "windows": {
-                "command": "powershell",
-                "args": [
-                    "-c",
-                    "'mingw32-make clean'"
-                ]
-            },
-            "linux": {
-                "command": "bash",
-                "args": [
-                    "-c",
-                    "'make clean'"
-                ]
-            },
-            "osx": {
-                "command": "bash",
-                "args": [
-                    "-c",
-                    "'make clean'"
-                ]
-            }
+            "problemMatcher": [],
+            "detail": "CMake build task"
         }
     ]
 }

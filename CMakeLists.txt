@@ -22,7 +22,9 @@ endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE})
 
 # 将UI文件复制到相应的输出目录
-file(COPY GUIDesign.xml DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+install(FILES GUIDesign.xml 
+        DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # --- 添加可执行文件 ---
 add_executable(SchedulerApp src/main.cpp src/SchedulerApp.cpp src/UserManager.cpp src/TaskManager.cpp src/md5.cpp)
