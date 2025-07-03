@@ -1,11 +1,13 @@
 #include "SchedulerApp.h"
 #include <iostream>
-#include <vector> // 包含头文件
-#include <algorithm> // 包含头文件
-#include <ctime> // 包含头文件
+#include <vector>
+#include <algorithm>
+#include <ctime>
+using namespace std;
 
 // 辅助函数，将 time_t 转换为字符串
-std::string time_t_to_string(time_t time) {
+string time_t_to_string(time_t time) {
+    if (time == 0) return "N/A"; // 处理未设置的时间
     char buffer[20];
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", localtime(&time));
     return buffer;
@@ -22,10 +24,10 @@ void SchedulerApp::on_activate() {
     try {
         m_builder = Gtk::Builder::create_from_file("GUIDesign.xml");
     } catch (const Glib::FileError& ex) {
-        std::cerr << "FileError: " << ex.what() << std::endl;
+        cerr << "FileError: " << ex.what() << endl;
         return;
     } catch (const Gtk::BuilderError& ex) {
-        std::cerr << "BuilderError: " << ex.what() << std::endl;
+        cerr << "BuilderError: " << ex.what() << endl;
         return;
     }
 
@@ -33,7 +35,14 @@ void SchedulerApp::on_activate() {
 
     m_refTreeModel = Gtk::ListStore::create(m_Columns);
     task_tree_view->set_model(m_refTreeModel);
-
+    // 添加TreeView的列
+    task_tree_view->append_column("ID", m_Columns.m_col_id);
+    task_tree_view->append_column("名称", m_Columns.m_col_name);
+    task_tree_view->append_column("开始时间", m_Columns.m_col_start_time);
+    task_tree_view->append_column("优先级", m_Columns.m_col_priority);
+    task_tree_view->append_column("分类", m_Columns.m_col_category);
+    task_tree_view->append_column("提醒时间", m_Columns.m_col_reminder_time);
+    
     connect_signals();
 
     add_window(*login_window);
@@ -96,35 +105,46 @@ void SchedulerApp::connect_signals() {
     add_task_dialog->signal_response().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_dialog_response));
 }
 
-// 信号处理函数实现
+// 信号处理函数实现 (已更新)
 void SchedulerApp::on_login_button_clicked() {
-    std::string username = login_username_entry->get_text();
-    std::string password = login_password_entry->get_text();
+    string username = login_username_entry->get_text();
+    string password = login_password_entry->get_text();
 
     if (username.empty() || password.empty()) {
         show_message("登录错误", "用户名和密码不能为空。");
         return;
     }
-    if (m_user_manager.login(username, password)) {
-        m_current_user = username;
-        m_task_manager.setCurrentUser(m_current_user);
-        login_password_entry->set_text("");
-        login_window->hide();
-        main_window->show();
-        main_statusbar->push("用户 " + m_current_user + " 已登录", 1);
-        update_task_list();
-        // TODO: m_task_manager.startReminderThread();
-    } else {
-        show_message("登录失败", "用户名或密码错误。");
+
+    // 调用更新后的 login 方法
+    auto login_result = m_user_manager.login(username, password);
+    
+    // 使用 switch 处理不同的登录结果
+    switch (login_result) {
+        case UserManager::LoginResult::SUCCESS:
+            m_current_user = username;
+            m_task_manager.setCurrentUser(m_current_user);
+            login_password_entry->set_text("");
+            login_window->hide();
+            main_window->show();
+            main_statusbar->push("用户 " + m_current_user + " 已登录", 1);
+            update_task_list();
+            // TODO: m_task_manager.startReminderThread();
+            break;
+        case UserManager::LoginResult::USER_NOT_FOUND:
+            show_message("登录失败", "用户不存在。");
+            break;
+        case UserManager::LoginResult::INCORRECT_PASSWORD:
+            show_message("登录失败", "密码错误。");
+            break;
     }
 }
 
 void SchedulerApp::on_show_register_button_clicked() { register_window->show(); }
 
 void SchedulerApp::on_register_button_clicked() {
-    std::string username = register_username_entry->get_text();
-    std::string pass1 = register_password_entry->get_text();
-    std::string pass2 = register_confirm_password_entry->get_text();
+    string username = register_username_entry->get_text();
+    string pass1 = register_password_entry->get_text();
+    string pass2 = register_confirm_password_entry->get_text();
     if (username.empty() || pass1.empty()) {
         show_message("注册错误", "用户名和密码不能为空。");
         return;
@@ -149,6 +169,7 @@ void SchedulerApp::on_logout_button_clicked() {
     m_current_user.clear();
     main_window->hide();
     login_window->show();
+    main_statusbar->pop(1); // 清除状态栏消息
 }
 
 void SchedulerApp::on_add_task_button_clicked() {
@@ -158,22 +179,20 @@ void SchedulerApp::on_add_task_button_clicked() {
 void SchedulerApp::on_add_task_dialog_response(int response_id) {
     add_task_dialog->hide();
     if(response_id == Gtk::RESPONSE_OK) {
-        std::cout << "OK button clicked on Add Task dialog." << std::endl;
+        cout << "OK button clicked on Add Task dialog." << endl;
         // TODO: 从对话框获取数据并调用 m_task_manager.addTask()
         // TODO: 调用 update_task_list() 刷新
     } else {
-        std::cout << "Cancel button clicked on Add Task dialog." << std::endl;
+        cout << "Cancel button clicked on Add Task dialog." << endl;
     }
 }
 
 void SchedulerApp::on_delete_task_button_clicked() {
     auto selection = task_tree_view->get_selection();
     if (auto iter = selection->get_selected()) {
-        // 使用 m_Columns 对象来安全地访问数据
         long long id = (*iter)[m_Columns.m_col_id];
 
         if(m_task_manager.deleteTask(id)) {
-            // 直接从视图中删除行，比完全重绘更高效
             m_refTreeModel->erase(iter);
             show_message("成功", "任务已删除。");
         } else {
@@ -188,20 +207,16 @@ void SchedulerApp::on_show_help_button_clicked() { help_window->show(); }
 void SchedulerApp::on_help_close_button_clicked() { help_window->hide(); }
 
 void SchedulerApp::update_task_list() {
-    std::cout << "Updating task list view..." << std::endl;
-    m_refTreeModel->clear(); // 清空视图
+    cout << "Updating task list view..." << endl;
+    m_refTreeModel->clear(); 
 
-    std::vector<Task> tasks = m_task_manager.getAllTasks();
-    // 假设 getAllTasks 返回的已经是排序好的
-    // std::sort(tasks.begin(), tasks.end(), ...); 
+    vector<Task> tasks = m_task_manager.getAllTasks();
 
     for(const auto& task : tasks) {
         Gtk::TreeModel::Row row = *(m_refTreeModel->append());
-        // 使用 m_Columns 对象来安全地设置数据
         row[m_Columns.m_col_id] = task.id;
         row[m_Columns.m_col_name] = task.name;
         
-        // 转换时间和枚举值为字符串
         row[m_Columns.m_col_start_time] = time_t_to_string(task.startTime);
         row[m_Columns.m_col_reminder_time] = time_t_to_string(task.reminderTime);
 
@@ -211,8 +226,15 @@ void SchedulerApp::update_task_list() {
     }
 }
 
-void SchedulerApp::show_message(const std::string& title, const std::string& msg) {
-    Gtk::MessageDialog dialog(*main_window, msg, false, Gtk::MESSAGE_INFO, Gtk::BUTTONS_OK, true);
+void SchedulerApp::show_message(const string& title, const string& msg) {
+    // 确保弹窗在正确的父窗口上
+    Gtk::Window* parent_window = login_window;
+    if (main_window && main_window->is_visible()) {
+        parent_window = main_window;
+    } else if (register_window && register_window->is_visible()) {
+        parent_window = register_window;
+    }
+    Gtk::MessageDialog dialog(*parent_window, msg, false, Gtk::MESSAGE_INFO, Gtk::BUTTONS_OK, true);
     dialog.set_title(title);
     dialog.run();
 }
