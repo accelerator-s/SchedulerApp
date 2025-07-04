@@ -23,6 +23,8 @@ private:
     long long next_id;
     string current_user;
 
+       
+
     // 文件操作
     void loadTasks();
     void saveTask(const Task& task);

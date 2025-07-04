@@ -5,17 +5,16 @@
 #include "TaskManager.h"
 
 class SchedulerApp : public Gtk::Application {
-protected:
+public:
     SchedulerApp();
 
-public:
+
     static Glib::RefPtr<SchedulerApp> create();
 
-protected:
+
     // 重写Gtk::Application的虚函数
     void on_activate() override;
 
-private:
     class ModelColumns : public Gtk::TreeModel::ColumnRecord
     {
     public:
