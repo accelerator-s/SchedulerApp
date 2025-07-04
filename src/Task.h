@@ -19,6 +19,8 @@ struct Task {
     Category category;
     time_t reminderTime;
 
+    bool reminded = false;  // 是否已提醒(modified by 王博宇)
+    
     // 缺省构造函数
     Task() : id(-1), startTime(0), priority(Priority::MEDIUM), category(Category::STUDY), reminderTime(0) {}
 };
