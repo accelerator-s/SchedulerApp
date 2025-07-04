@@ -7,13 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # --- 查找依赖包 ---
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
-find_package(Threads REQUIRED) # 查找并加载线程库
+find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)  # 添加OpenSSL依赖
 
 # --- 设置头文件搜索路径 ---
-# 将 src 目录添加到头文件搜索路径中
 include_directories(src) 
-# GTKmm 3.0 的头文件目录
 include_directories(${GTKMM_INCLUDE_DIRS})
+include_directories(${OPENSSL_INCLUDE_DIR})  # 添加OpenSSL头文件路径
 
 # --- 设置输出路径 ---
 if(NOT CMAKE_BUILD_TYPE)
@@ -30,7 +30,16 @@ install(FILES GUIDesign.xml
 add_executable(SchedulerApp src/main.cpp src/SchedulerApp.cpp src/UserManager.cpp src/TaskManager.cpp src/md5.cpp)
 
 # --- 链接库 ---
-target_link_libraries(SchedulerApp PRIVATE ${GTKMM_LIBRARIES} Threads::Threads)
+target_link_libraries(SchedulerApp PRIVATE 
+    ${GTKMM_LIBRARIES} 
+    Threads::Threads
+    OpenSSL::Crypto  # 添加OpenSSL加密库
+)
 
 # Gtkmm需要的一些额外编译定义
 target_compile_definitions(SchedulerApp PRIVATE ${GTKMM_DEFINITIONS})
+
+# 可选：添加编译选项
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(SchedulerApp PRIVATE -Wall -Wextra -pedantic)
+endif()
