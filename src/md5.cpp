@@ -7,7 +7,7 @@
 #include "md5.h"
 #include<iomanip>
 #include <sstream>
-#include <openssl/md5.h> // 确保你已经安装了OpenSSL库
+#include <openssl/md5.h>
 #include <string>
 #include <openssl/evp.h>
 #include <openssl/err.h>
