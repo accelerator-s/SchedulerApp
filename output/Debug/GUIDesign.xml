@@ -4,7 +4,7 @@
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkDialog" id="add_task_dialog">
     <property name="can-focus">False</property>
-    <property name="title" translatable="yes">添 加 新 任 务</property>
+    <property name="title" translatable="yes">添加新任务</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window-position">center-on-parent</property>
@@ -53,15 +53,15 @@
           </packing>
         </child>
         <child>
-          <!-- n-columns=3 n-rows=5 -->
+          <!-- n-columns=3 n-rows=8 -->
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="margin-start">10</property>
-            <property name="margin-end">10</property>
-            <property name="margin-top">10</property>
-            <property name="margin-bottom">10</property>
-            <property name="row-spacing">10</property>
+            <property name="margin-start">15</property>
+            <property name="margin-end">15</property>
+            <property name="margin-top">15</property>
+            <property name="margin-bottom">15</property>
+            <property name="row-spacing">12</property>
             <property name="column-spacing">10</property>
             <child>
               <object class="GtkLabel">
@@ -72,6 +72,17 @@
               </object>
               <packing>
                 <property name="left-attach">0</property>
+                <property name="top-attach">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="task_name_entry">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="hexpand">True</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
                 <property name="top-attach">0</property>
               </packing>
             </child>
@@ -88,20 +99,11 @@
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="task_name_entry">
+              <object class="GtkButton" id="task_start_time_button">
+                <property name="label" translatable="yes">选择开始时间...</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="task_start_time_entry">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="placeholder-text" translatable="yes">格式: YYYY-MM-DD HH:MM</property>
+                <property name="receives-default">False</property>
               </object>
               <packing>
                 <property name="left-attach">1</property>
@@ -113,10 +115,44 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">end</property>
-                <property name="label" translatable="yes">优先级:</property>
+                <property name="label" translatable="yes">持续时间:</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
+                <property name="top-attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="spacing">5</property>
+                <child>
+                  <object class="GtkSpinButton" id="task_duration_spin">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">分钟</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
                 <property name="top-attach">2</property>
               </packing>
             </child>
@@ -125,10 +161,22 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">end</property>
-                <property name="label" translatable="yes">分类:</property>
+                <property name="label" translatable="yes">结束时间:</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
+                <property name="top-attach">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="task_end_time_label">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">start</property>
+                <property name="label" translatable="yes">[自动计算]</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
                 <property name="top-attach">3</property>
               </packing>
             </child>
@@ -137,7 +185,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">end</property>
-                <property name="label" translatable="yes">提醒时间:</property>
+                <property name="label" translatable="yes">优先级:</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
@@ -157,7 +205,19 @@
               </object>
               <packing>
                 <property name="left-attach">1</property>
-                <property name="top-attach">2</property>
+                <property name="top-attach">4</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">end</property>
+                <property name="label" translatable="yes">分类:</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">5</property>
               </packing>
             </child>
             <child>
@@ -169,23 +229,72 @@
                   <item translatable="yes">学习</item>
                   <item translatable="yes">娱乐</item>
                   <item translatable="yes">生活</item>
+                  <item id="category_other_item" translatable="yes">其他...</item>
                 </items>
               </object>
               <packing>
                 <property name="left-attach">1</property>
-                <property name="top-attach">3</property>
+                <property name="top-attach">5</property>
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="task_reminder_time_entry">
-                <property name="visible">True</property>
+              <object class="GtkEntry" id="task_custom_category_entry">
                 <property name="can-focus">True</property>
-                <property name="placeholder-text" translatable="yes">格式: YYYY-MM-DD HH:MM</property>
+                <property name="no-show-all">True</property>
+                <property name="placeholder-text" translatable="yes">请输入自定义分类</property>
               </object>
               <packing>
                 <property name="left-attach">1</property>
-                <property name="top-attach">4</property>
+                <property name="top-attach">6</property>
               </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">end</property>
+                <property name="label" translatable="yes">提前提醒:</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">7</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBoxText" id="task_reminder_combo">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="has-entry">True</property>
+                <items>
+                  <item id="remind_none" translatable="yes">不提醒</item>
+                  <item id="remind_5m" translatable="yes">5分钟前</item>
+                  <item id="remind_10m" translatable="yes">10分钟前</item>
+                  <item id="remind_30m" translatable="yes">30分钟前</item>
+                  <item id="remind_1h" translatable="yes">1小时前</item>
+                  <item id="remind_1d" translatable="yes">1天前</item>
+                </items>
+                <child internal-child="entry">
+                  <object class="GtkEntry" id="task_reminder_entry">
+                    <property name="can-focus">True</property>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">7</property>
+              </packing>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
             </child>
             <child>
               <placeholder/>
@@ -204,7 +313,7 @@
             </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">1</property>
           </packing>
@@ -667,19 +776,6 @@
           </packing>
         </child>
       </object>
-    </child>
-  </object>
-  <object class="GtkApplicationWindow" id="user_manager_window">
-    <property name="width-request">250</property>
-    <property name="height-request">400</property>
-    <property name="can-focus">False</property>
-    <property name="title" translatable="yes">用户管理</property>
-    <property name="resizable">False</property>
-    <property name="modal">True</property>
-    <property name="window-position">center</property>
-    <property name="destroy-with-parent">True</property>
-    <child>
-      <placeholder/>
     </child>
   </object>
 </interface>

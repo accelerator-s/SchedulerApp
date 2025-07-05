@@ -9,7 +9,7 @@ using namespace std;
 enum class Priority { HIGH, MEDIUM, LOW };
 
 // 任务分类枚举
-enum class Category { STUDY, ENTERTAINMENT, LIFE };
+enum class Category { STUDY, ENTERTAINMENT, LIFE, OTHER };
 
 struct Task {
     long long id;
@@ -17,6 +17,7 @@ struct Task {
     time_t startTime;
     Priority priority;
     Category category;
+    string customCategory;
     time_t reminderTime;
 
     bool reminded = false;  // 是否已提醒(modified by 王博宇)
