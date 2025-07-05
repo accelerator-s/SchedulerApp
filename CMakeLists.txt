@@ -8,12 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)  # 添加OpenSSL依赖
+find_package(OpenSSL REQUIRED)
 
 # --- 设置头文件搜索路径 ---
 include_directories(src) 
 include_directories(${GTKMM_INCLUDE_DIRS})
-include_directories(${OPENSSL_INCLUDE_DIR})  # 添加OpenSSL头文件路径
+include_directories(${OPENSSL_INCLUDE_DIR})
 
 # --- 设置输出路径 ---
 if(NOT CMAKE_BUILD_TYPE)
@@ -21,20 +21,26 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE})
 
-# 将UI文件复制到相应的输出目录
-install(FILES GUIDesign.xml 
-        DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-
 # --- 添加可执行文件 ---
+# 列出所有源文件
 add_executable(SchedulerApp src/main.cpp src/SchedulerApp.cpp src/UserManager.cpp src/TaskManager.cpp src/md5.cpp)
 
 # --- 链接库 ---
 target_link_libraries(SchedulerApp PRIVATE 
     ${GTKMM_LIBRARIES} 
     Threads::Threads
-    OpenSSL::Crypto  # 添加OpenSSL加密库
+    OpenSSL::Crypto
 )
+
+# 自定义文件复制函数
+add_custom_command(
+    TARGET SchedulerApp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/GUIDesign.xml"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/GUIDesign.xml"
+    COMMENT "Copying GUIDesign.xml to output directory..."
+)
+
 
 # Gtkmm需要的一些额外编译定义
 target_compile_definitions(SchedulerApp PRIVATE ${GTKMM_DEFINITIONS})

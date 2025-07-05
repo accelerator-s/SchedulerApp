@@ -6,7 +6,6 @@
 
 // TaskManager 构造函数
 TaskManager::TaskManager() : next_id(1), m_running(false) {
-    //TODO
     // 互斥锁和线程对象会自动默认构造
     // 原子布尔值 m_running 初始化为 false
 }
@@ -68,7 +67,7 @@ bool TaskManager::deleteTask(long long taskId) {
 
     if (it != tasks.end()) {
         tasks.erase(it);
-        // 2. 调用 rewriteTasksFile() 重写整个任务文件
+        // 2. 重写整个任务文件
         rewriteTasksFile();
         cout << "Successfully deleted task with ID: " << taskId << endl;
         return true;
@@ -85,11 +84,6 @@ vector<Task> TaskManager::getAllTasks() const {
     return tasks;
 }
 
-/**
- * @brief 从文件加载任务。
- * @note 使用二进制格式来处理包含空格等特殊字符的任务名称。
- * 格式：[id][startTime][priority][category][reminderTime][name_len][name_data]
- */
 void TaskManager::loadTasks() {
     ifstream file(tasks_file, ios::binary);
     if (!file.is_open()) {
@@ -108,15 +102,28 @@ void TaskManager::loadTasks() {
         file.read(reinterpret_cast<char*>(&t.category), sizeof(t.category));
         file.read(reinterpret_cast<char*>(&t.reminderTime), sizeof(t.reminderTime));
 
-        if (file.fail()) break; // 防止文件末尾不完整的记录导致读取失败
+        if (file.fail()) break;
 
+        // 读取任务名称
         size_t name_len;
         file.read(reinterpret_cast<char*>(&name_len), sizeof(name_len));
+        if (name_len > 0) {
+            vector<char> name_buf(name_len);
+            file.read(name_buf.data(), name_len);
+            t.name.assign(name_buf.data(), name_len);
+        }
         
-        vector<char> name_buf(name_len);
-        file.read(name_buf.data(), name_len);
-        t.name.assign(name_buf.data(), name_len);
+        if (file.fail()) break;
         
+        // 读取自定义分类名称
+        size_t custom_cat_len;
+        file.read(reinterpret_cast<char*>(&custom_cat_len), sizeof(custom_cat_len));
+        if (custom_cat_len > 0) {
+            vector<char> custom_cat_buf(custom_cat_len);
+            file.read(custom_cat_buf.data(), custom_cat_len);
+            t.customCategory.assign(custom_cat_buf.data(), custom_cat_len);
+        }
+
         if (file.fail()) break;
 
         tasks.push_back(t);
@@ -126,10 +133,8 @@ void TaskManager::loadTasks() {
     }
     file.close();
 
-    // 更新 next_id 为已存在任务的最大ID + 1
     next_id = max_id + 1;
 
-    // 加载后排序
     sort(tasks.begin(), tasks.end(), [](const Task& a, const Task& b) {
         return a.startTime < b.startTime;
     });
@@ -137,10 +142,6 @@ void TaskManager::loadTasks() {
     cout << "Loaded " << tasks.size() << " tasks. Next ID is " << next_id << endl;
 }
 
-/**
- * @brief 将单个任务以追加模式写入文件。
- * @note 格式与 loadTasks 中读取的格式一致。
- */
 void TaskManager::saveTask(const Task& task) {
     ofstream file(tasks_file, ios::binary | ios::app);
     if (!file.is_open()) {
@@ -156,23 +157,26 @@ void TaskManager::saveTask(const Task& task) {
     
     size_t name_len = task.name.length();
     file.write(reinterpret_cast<const char*>(&name_len), sizeof(name_len));
-    file.write(task.name.c_str(), name_len);
+    if (name_len > 0) {
+        file.write(task.name.c_str(), name_len);
+    }
+    
+    size_t custom_cat_len = task.customCategory.length();
+    file.write(reinterpret_cast<const char*>(&custom_cat_len), sizeof(custom_cat_len));
+    if (custom_cat_len > 0) {
+        file.write(task.customCategory.c_str(), custom_cat_len);
+    }
 
     file.close();
 }
 
-/**
- * @brief 重写任务文件，用于删除或批量更新后。
- */
 void TaskManager::rewriteTasksFile() {
-    // 以截断模式打开文件，清空原有内容
     ofstream file(tasks_file, ios::binary | ios::trunc);
     if (!file.is_open()) {
         cerr << "Error: Could not open task file for rewriting: " << tasks_file << endl;
         return;
     }
 
-    // 循环写入内存中的所有任务
     for (const auto& task : tasks) {
         file.write(reinterpret_cast<const char*>(&task.id), sizeof(task.id));
         file.write(reinterpret_cast<const char*>(&task.startTime), sizeof(task.startTime));
@@ -182,7 +186,15 @@ void TaskManager::rewriteTasksFile() {
         
         size_t name_len = task.name.length();
         file.write(reinterpret_cast<const char*>(&name_len), sizeof(name_len));
-        file.write(task.name.c_str(), name_len);
+        if (name_len > 0) {
+            file.write(task.name.c_str(), name_len);
+        }
+        
+        size_t custom_cat_len = task.customCategory.length();
+        file.write(reinterpret_cast<const char*>(&custom_cat_len), sizeof(custom_cat_len));
+        if (custom_cat_len > 0) {
+            file.write(task.customCategory.c_str(), custom_cat_len);
+        }
     }
     file.close();
 }
@@ -190,18 +202,13 @@ void TaskManager::rewriteTasksFile() {
 // --- 守护进程部分 ---
 
 void TaskManager::startReminderThread() {
-    // TODO: 创建并启动一个后台线程，该线程运行 reminderCheckLoop()
-    cout << "Reminder thread would be started here." << endl;
+
 }
 
 void TaskManager::stopReminderThread() {
-    // TODO: 设置原子布尔值为false，并join线程
-     cout << "Reminder thread would be stopped here." << endl;
+
 }
 
 void TaskManager::reminderCheckLoop() {
-    // TODO: 这是一个循环:
-    // 1. sleep一段时间 (例如 30s)
-    // 2. 检查 m_running 标志
-    // 3. 遍历所有任务，如果 reminderTime 到达且未提醒，则打印提醒信息
+
 }
