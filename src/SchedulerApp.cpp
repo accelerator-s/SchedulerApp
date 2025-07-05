@@ -185,6 +185,33 @@ void SchedulerApp::on_register_button_clicked() {
     string username = register_username_entry->get_text();
     string pass1 = register_password_entry->get_text();
     string pass2 = register_confirm_password_entry->get_text();
+
+
+    //modified by wby
+    // 新增：密码长度检查
+
+    if (!UserManager::isPasswordValid(pass1)) {
+        show_message("注册错误", "密码必须至少6位，且同时包含大小写字母和数字！");
+        return; // 验证失败，直接返回
+    }
+    /*if (pass1.length() < 6) {
+        show_message("注册错误", "密码长度必须至少6位。");
+        return;
+    }
+
+    // 新增：密码复杂度检查（大小写、数字）
+    bool hasUpper = false, hasLower = false, hasDigit = false;
+    for (char c : pass1) {
+        if (isupper(c)) hasUpper = true;
+        else if (islower(c)) hasLower = true;
+        else if (isdigit(c)) hasDigit = true;
+    }
+    if (!hasUpper || !hasLower || !hasDigit) {
+        show_message("注册错误", "密码必须同时包含大小写字母和数字。");
+        return;
+    }//modified by wby*/
+
+    // 检查用户名和密码是否为空
     if (username.empty() || pass1.empty()) {
         show_message("注册错误", "用户名和密码不能为空。");
         return;

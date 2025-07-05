@@ -13,6 +13,10 @@ public:
         INCORRECT_PASSWORD
     };
 
+    //modified by wby
+    // 新增：密码验证工具函数
+    static bool isPasswordValid(const std::string& password);  // 建议设为static
+
     UserManager();
     bool registerUser(const string& username, const string& password);
     // 修改login函数的返回类型
