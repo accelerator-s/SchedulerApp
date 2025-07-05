@@ -3,14 +3,36 @@
 #include <gtkmm.h>
 #include "UserManager.h"
 #include "TaskManager.h"
-
+#include <iostream>
+#include "MainWindow.h"
 class SchedulerApp : public Gtk::Application {
 public:
     SchedulerApp();
 
+std::unique_ptr<MainWindow> main_window;  // 使用 unique_ptr
+    Gtk::Window* m_main_window = nullptr;
+   
+
+    /*SchedulerApp() : Gtk::Application("org.cpp.scheduler.app") {}
+    // 禁止拷贝构造和赋值
+    SchedulerApp(const SchedulerApp&) = delete;
+    SchedulerApp& operator=(const SchedulerApp&) = delete;//modify just now*/
+    // 提供全局访问点
+    static SchedulerApp* get_instance() {
+        static SchedulerApp instance;  // 单例实例
+        return &instance;
+    }
+    void on_login_success();
+    
+    //modified by wby
+
+
+    
 
     static Glib::RefPtr<SchedulerApp> create();
 
+    void create_main_window();//modify just now
+    void set_main_window(Gtk::Window* window);  // 参数类型为 Gtk::Window*//modify just now
 
     // 重写Gtk::Application的虚函数
     void on_activate() override;
@@ -69,6 +91,14 @@ public:
     void get_widgets();
     void connect_signals();
     void show_message(const std::string& title, const std::string& msg);
+        /*if (m_main_window) {
+            Gtk::MessageDialog dialog(*m_main_window, msg, false, Gtk::MESSAGE_INFO);
+            dialog.set_title(title);
+            dialog.run();
+        } else {
+            std::cerr << "Error: No parent window available for message dialog!" << std::endl;
+        }
+    }//modify just now*/
     
     // UI更新和辅助函数
     void update_task_list();

@@ -43,6 +43,18 @@ Glib::RefPtr<SchedulerApp> SchedulerApp::create() {
     return Glib::RefPtr<SchedulerApp>(new SchedulerApp());
 }
 
+
+void SchedulerApp::set_main_window(Gtk::Window* window) {
+    m_main_window = window;  // 保存原始指针
+}
+// 在创建主窗口的函数中设置主窗口
+void SchedulerApp::create_main_window() {
+    main_window = std::make_unique<MainWindow>(*this);
+    set_main_window(main_window.get());  // 设置主窗口
+    
+    // ...其他代码...
+}//modify just now
+
 void SchedulerApp::on_activate() {
     try {
         m_builder = Gtk::Builder::create_from_file("GUIDesign.xml");
@@ -146,6 +158,12 @@ void SchedulerApp::connect_signals() {
     }
 }
 
+void SchedulerApp::on_login_success() {
+    m_task_manager.setCurrentUser(m_current_user);  // 使用 m_current_user 而非局部变量
+    m_task_manager.startReminderThread();           // 启动提醒线程
+    std::cout << "提醒线程已启动，当前用户: " << m_current_user << std::endl;
+}//modified by wby
+
 void SchedulerApp::on_login_button_clicked() {
     if (!login_username_entry || !login_password_entry) return;
     string username = login_username_entry->get_text();
@@ -165,7 +183,13 @@ void SchedulerApp::on_login_button_clicked() {
             if(login_window) login_window->hide();
             if(main_window) main_window->show();
             if(main_statusbar) main_statusbar->push("用户 " + m_current_user + " 已登录", 1);
+            
             update_task_list();
+            this->on_login_success();  // 明确调用成员函数
+
+             // 新增：调用登录成功后的初始化函数
+            //modified by wby
+
             break;
         case UserManager::LoginResult::USER_NOT_FOUND:
             show_message("登录失败", "用户不存在。");
@@ -294,10 +318,23 @@ void SchedulerApp::on_add_task_ok_button_clicked() {
         return;
     }
 
+    /*// 获取开始时间（示例：从日期时间选择器获取）
+    time_t startTime = get_selected_start_time();//modify just now
+    
+    // 获取提前提醒的分钟数（示例：从下拉框或输入框获取）
+    int reminderMinutes = get_reminder_minutes();//modify just now*/
+
     Task newTask;
     newTask.name = name;
     newTask.startTime = m_selected_start_time;
     
+    /*// 计算提醒时间：开始时间 - 提前量（秒）
+    if (reminderMinutes > 0) {
+        newTask.reminderTime = startTime - (reminderMinutes * 60);
+    } else {
+        newTask.reminderTime = 0;  // 不提醒
+    }//modify just now*/
+
     string priority_str = task_priority_combo->get_active_text();
     if (priority_str == "高") newTask.priority = Priority::HIGH;
     else if (priority_str == "低") newTask.priority = Priority::LOW;
@@ -537,6 +574,7 @@ void SchedulerApp::update_task_list() {
         row[m_Columns.m_col_category] = category_to_string(task);
     }
 }
+
 
 void SchedulerApp::show_message(const string& title, const string& msg) {
     Gtk::Window* parent_window = nullptr;

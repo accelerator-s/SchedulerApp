@@ -256,12 +256,16 @@ void TaskManager::stopReminderThread() {
 // 提醒检查循环（后台线程执行函数）
 void TaskManager::reminderCheckLoop() {
     // 循环检查直到m_running为false
+
+    //std::cout << "Reminder thread started. Checking every 30 seconds..." << std::endl;//modify just now
     while (m_running) {
         // 1. 休眠30秒（可调整检查间隔）
         this_thread::sleep_for(chrono::seconds(30));
 
         // 2. 检查运行标志（防止休眠期间被终止）
         if (!m_running) break;
+
+        //std::cout << "Checking tasks for reminders at: " << std::ctime(&time(nullptr));//modify just now
 
         // 3. 线程安全地获取当前任务列表
         vector<Task> current_tasks;
@@ -277,9 +281,25 @@ void TaskManager::reminderCheckLoop() {
             if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
                 // 显示提醒信息
                 //showReminder(task);
-                SchedulerApp s;
-                s.show_message("提醒", task.name + " 任务提醒！\n开始时间: " + 
-                             ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime));
+
+                SchedulerApp* app = SchedulerApp::get_instance();
+                if (!app) {
+                    cerr << "Failed to get SchedulerApp instance" << endl;
+                    continue;
+                }
+                // 2. 复制任务信息到局部变量（避免线程访问冲突）
+                Task task_copy = task;
+
+                // 3. 通过GTK的idle信号在主线程执行弹窗
+                Glib::signal_idle().connect_once([app, task_copy]() {
+                    app->show_message(
+                        "提醒", 
+                        task_copy.name + " 任务提醒！\n开始时间: " + 
+                        ctime(&task_copy.startTime) + 
+                        "提醒时间: " + ctime(&task_copy.reminderTime)
+                    );
+                });
+                
                 // 标记任务为已提醒（线程安全地更新）
                 lock_guard<mutex> lock(tasks_mutex);
                 // 再次查找任务（防止期间任务被删除）
@@ -287,6 +307,7 @@ void TaskManager::reminderCheckLoop() {
                                  [&task](const Task& t) { return t.id == task.id; });
                 if (it != tasks.end()) {
                     it->reminded = true;
+                    rewriteTasksFile();  // 保存状态到文件
                 }
             }
         }
