@@ -22,6 +22,7 @@ private:
     const string users_file = "users.dat";
     map<string, string> users;
 
+
     void loadUsers();
     void saveUsers();
 };

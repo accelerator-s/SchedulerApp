@@ -1,8 +1,16 @@
 #include "TaskManager.h"
+#include "SchedulerApp.h"
 #include <iostream>
 #include <algorithm>
 #include <fstream>
 #include <mutex>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <vector>
+#include <ctime>
+using namespace std;
 
 // TaskManager 构造函数
 TaskManager::TaskManager() : next_id(1), m_running(false) {
@@ -199,7 +207,7 @@ void TaskManager::rewriteTasksFile() {
     file.close();
 }
 
-// --- 守护进程部分 ---
+/* --- 守护进程部分 ---(modified by 王博宇)
 
 void TaskManager::startReminderThread() {
 
@@ -210,5 +218,80 @@ void TaskManager::stopReminderThread() {
 }
 
 void TaskManager::reminderCheckLoop() {
+    // TODO: 这是一个循环:
+    // 1. sleep一段时间 (例如 30s)
+    // 2. 检查 m_running 标志
+    // 3. 遍历所有任务，如果 reminderTime 到达且未提醒，则打印提醒信息
+}*/
+// --- 守护进程部分 ---(modified by 王博宇)
 
+// 启动提醒线程
+void TaskManager::startReminderThread() {
+    if (m_running) {
+        cout << "Reminder thread is already running." << endl;
+        return;
+    }
+
+    // 设置运行标志为true，创建并启动线程
+    m_running = true;
+    reminder_thread = thread(&TaskManager::reminderCheckLoop, this);
+    
 }
+
+// 停止提醒线程
+void TaskManager::stopReminderThread() {
+    if (!m_running) {
+        
+        return;
+    }
+
+    // 设置运行标志为false，等待线程结束
+    m_running = false;
+    if (reminder_thread.joinable()) {
+        reminder_thread.join();  // 阻塞等待线程退出
+    }
+    
+}
+
+// 提醒检查循环（后台线程执行函数）
+void TaskManager::reminderCheckLoop() {
+    // 循环检查直到m_running为false
+    while (m_running) {
+        // 1. 休眠30秒（可调整检查间隔）
+        this_thread::sleep_for(chrono::seconds(30));
+
+        // 2. 检查运行标志（防止休眠期间被终止）
+        if (!m_running) break;
+
+        // 3. 线程安全地获取当前任务列表
+        vector<Task> current_tasks;
+        {
+            lock_guard<mutex> lock(tasks_mutex);  // 加锁保护任务列表
+            current_tasks = tasks;  // 复制任务列表到局部变量，减少锁持有时间
+        }
+
+        // 4. 遍历任务检查提醒时间
+        time_t now = time(nullptr);  // 当前时间戳
+        for (auto& task : current_tasks) {
+            // 检查条件：提醒时间有效 + 未过期 + 未提醒过
+            if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
+                // 显示提醒信息
+                //showReminder(task);
+                SchedulerApp s;
+                s.show_message("提醒", task.name + " 任务提醒！\n开始时间: " + 
+                             ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime));
+                // 标记任务为已提醒（线程安全地更新）
+                lock_guard<mutex> lock(tasks_mutex);
+                // 再次查找任务（防止期间任务被删除）
+                auto it = find_if(tasks.begin(), tasks.end(), 
+                                 [&task](const Task& t) { return t.id == task.id; });
+                if (it != tasks.end()) {
+                    it->reminded = true;
+                }
+            }
+        }
+    }
+}
+
+
+    
