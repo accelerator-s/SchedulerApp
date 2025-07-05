@@ -3,11 +3,55 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-
+#include <cctype> // for isupper, islower, isdigit
+#include <cwctype>  // 宽字符处理
+#include <locale>   // 本地化支持
 UserManager::UserManager() {
     // 在构造函数中调用 loadUsers()，加载已存在的用户数据
     loadUsers();
 }
+
+//modified by wby
+
+bool UserManager::isPasswordValid(const std::string& password) {
+    if (password.length() < 6) return false;
+    
+    bool hasUpper = false, hasLower = false, hasDigit = false;
+    
+    
+    for (char c : password) {
+        wchar_t wc = static_cast<wchar_t>(c);
+        if (std::iswupper(wc)) hasUpper = true;
+        if (std::iswlower(wc)) hasLower = true;
+        if (std::iswdigit(wc)) hasDigit = true;
+    }
+    
+   
+    
+
+    // 调试信息：打印当前密码的验证结果
+    std::cerr << "密码验证 - 大写:" << hasUpper 
+              << " 小写:" << hasLower 
+              << " 数字:" << hasDigit << std::endl;
+
+    // 3. 必须同时满足三个条件
+    return hasUpper && hasLower && hasDigit;
+}
+
+/*
+// 新增：密码验证工具函数
+bool UserManager::isPasswordValid(const std::string& password) {
+        if (password.length() < 6) return false;
+
+        bool hasUpper = false, hasLower = false, hasDigit = false;
+        for (char c : password) {
+            if (isupper(c)) hasUpper = true;
+            else if (islower(c)) hasLower = true;
+            else if (isdigit(c)) hasDigit = true;
+        }
+        return hasUpper && hasLower && hasDigit;
+    }*/
+
 
 bool UserManager::registerUser(const string& username, const string& password) {
     cout << "Attempting to register user: " << username << endl;
@@ -17,7 +61,7 @@ bool UserManager::registerUser(const string& username, const string& password) {
         cerr << "Registration failed: Username '" << username << "' already exists." << endl;
         return false; // 用户名已存在
     }
-
+     
     // 2. 如果不存在，使用md5()加密密码
     string hashedPassword = md5(password);
 
