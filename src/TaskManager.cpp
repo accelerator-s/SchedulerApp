@@ -258,7 +258,7 @@ void TaskManager::reminderCheckLoop() {
     // 循环检查直到m_running为false
     while (m_running) {
         // 1. 休眠30秒（可调整检查间隔）
-        this_thread::sleep_for(chrono::seconds(30));
+        this_thread::sleep_for(chrono::seconds(5));
 
         // 2. 检查运行标志（防止休眠期间被终止）
         if (!m_running) break;
@@ -277,9 +277,15 @@ void TaskManager::reminderCheckLoop() {
             if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
                 // 显示提醒信息
                 //showReminder(task);
-                SchedulerApp s;
+
+                if (reminder_callback) {
+                    std::string msg = task.name + " 任务提醒！\n开始时间: " + 
+                                     ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime);
+                    reminder_callback("提醒", msg);  // 触发回调
+
+                /*SchedulerApp s;
                 s.show_message("提醒", task.name + " 任务提醒！\n开始时间: " + 
-                             ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime));
+                             ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime));*/
                 // 标记任务为已提醒（线程安全地更新）
                 lock_guard<mutex> lock(tasks_mutex);
                 // 再次查找任务（防止期间任务被删除）
@@ -291,6 +297,7 @@ void TaskManager::reminderCheckLoop() {
             }
         }
     }
+}
 }
 
 

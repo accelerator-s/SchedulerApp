@@ -8,6 +8,10 @@ class SchedulerApp : public Gtk::Application {
 public:
     SchedulerApp();
 
+    void on_reminder(const std::string& title, const std::string& msg);  // 提醒处理函数
+    // 添加on_login_success的声明（关键！）
+    void on_login_success();  // 声明该函数
+
     static Glib::RefPtr<SchedulerApp> create();
 
     void on_activate() override;
