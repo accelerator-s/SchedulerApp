@@ -323,136 +323,146 @@
   </object>
   <object class="GtkWindow" id="change_password_window">
     <property name="width-request">380</property>
-    <property name="height-request">220</property>
     <property name="can-focus">False</property>
-    <property name="title" translatable="yes">修改密码</property>
+    <property name="title" translatable="yes">日 程 管 理 系 统 - 修 改 密 码</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window-position">center</property>
+    <property name="destroy-with-parent">True</property>
     <child>
-      <object class="GtkFixed">
+      <!-- n-columns=3 n-rows=5 -->
+      <object class="GtkGrid">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="margin-start">15</property>
+        <property name="margin-end">15</property>
+        <property name="margin-top">15</property>
+        <property name="margin-bottom">15</property>
+        <property name="row-spacing">12</property>
+        <property name="column-spacing">10</property>
         <child>
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">end</property>
             <property name="label" translatable="yes">用户名：</property>
-            <attributes>
-              <attribute name="scale" value="1.2"/>
-            </attributes>
           </object>
           <packing>
-            <property name="x">25</property>
-            <property name="y">20</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
         <child>
           <object class="GtkEntry" id="cp_username_entry">
-            <property name="width-request">236</property>
-            <property name="height-request">28</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="hexpand">True</property>
           </object>
           <packing>
-            <property name="x">114</property>
-            <property name="y">20</property>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
         <child>
-          <object class="GtkLabel">
+          <object class="GtkLabel" id="cp_old_password_label">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">end</property>
             <property name="label" translatable="yes">原密码：</property>
-            <attributes>
-              <attribute name="scale" value="1.2"/>
-            </attributes>
           </object>
           <packing>
-            <property name="x">25</property>
-            <property name="y">60</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
           </packing>
         </child>
         <child>
           <object class="GtkEntry" id="cp_old_password_entry">
-            <property name="width-request">236</property>
-            <property name="height-request">28</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="visibility">False</property>
           </object>
           <packing>
-            <property name="x">114</property>
-            <property name="y">60</property>
+            <property name="left-attach">1</property>
+            <property name="top-attach">1</property>
           </packing>
         </child>
         <child>
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">end</property>
             <property name="label" translatable="yes">新密码：</property>
-            <attributes>
-              <attribute name="scale" value="1.2"/>
-            </attributes>
           </object>
           <packing>
-            <property name="x">25</property>
-            <property name="y">100</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">2</property>
           </packing>
         </child>
         <child>
           <object class="GtkEntry" id="cp_new_password_entry">
-            <property name="width-request">236</property>
-            <property name="height-request">28</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="visibility">False</property>
           </object>
           <packing>
-            <property name="x">114</property>
-            <property name="y">100</property>
+            <property name="left-attach">1</property>
+            <property name="top-attach">2</property>
           </packing>
         </child>
         <child>
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">end</property>
             <property name="label" translatable="yes">确认新密码：</property>
-            <attributes>
-              <attribute name="scale" value="1.2"/>
-            </attributes>
           </object>
           <packing>
-            <property name="x">15</property>
-            <property name="y">140</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">3</property>
           </packing>
         </child>
         <child>
           <object class="GtkEntry" id="cp_confirm_new_password_entry">
-            <property name="width-request">236</property>
-            <property name="height-request">28</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="visibility">False</property>
           </object>
           <packing>
-            <property name="x">114</property>
-            <property name="y">140</property>
+            <property name="left-attach">1</property>
+            <property name="top-attach">3</property>
           </packing>
         </child>
         <child>
           <object class="GtkButton" id="cp_confirm_button">
             <property name="label" translatable="yes">确认修改</property>
-            <property name="width-request">85</property>
-            <property name="height-request">26</property>
+            <property name="width-request">121</property>
+            <property name="height-request">30</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="receives-default">True</property>
+            <property name="halign">center</property>
+            <property name="margin-top">10</property>
           </object>
           <packing>
-            <property name="x">147</property>
-            <property name="y">180</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">4</property>
+            <property name="width">2</property>
           </packing>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
         </child>
       </object>
     </child>
@@ -471,9 +481,9 @@
     <property name="width-request">500</property>
     <property name="height-request">400</property>
     <property name="can-focus">False</property>
-    <property name="title" translatable="yes">帮 助</property>
+    <property name="title" translatable="yes">日 程 管 理 系 统 - 帮 助</property>
     <property name="modal">True</property>
-    <property name="window-position">center-on-parent</property>
+    <property name="window-position">center</property>
     <property name="destroy-with-parent">True</property>
     <child>
       <object class="GtkBox">
@@ -635,6 +645,48 @@
       </object>
     </child>
   </object>
+  <object class="GtkMenu" id="more_menu">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menu_item_change_password">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">修改密码</property>
+        <property name="use-underline">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menu_item_logout">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">注销</property>
+        <property name="use-underline">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menu_item_help">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">帮助</property>
+        <property name="use-underline">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menu_item_delete_account">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">删除账户</property>
+        <property name="use-underline">True</property>
+      </object>
+    </child>
+  </object>
   <object class="GtkApplicationWindow" id="main_window">
     <property name="width-request">800</property>
     <property name="height-request">600</property>
@@ -682,31 +734,24 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="show_help_button">
-                <property name="label" translatable="yes">帮助</property>
+              <object class="GtkMenuButton" id="more_button">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
+                <property name="popup">more_menu</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">更多</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="pack-type">end</property>
                 <property name="position">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="logout_button">
-                <property name="label" translatable="yes">注销</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="pack-type">end</property>
-                <property name="position">3</property>
               </packing>
             </child>
           </object>

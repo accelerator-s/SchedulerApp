@@ -1,5 +1,5 @@
 #include "TaskManager.h"
-#include "SchedulerApp.h"
+// #include "SchedulerApp.h" // TaskManager不应该依赖UI层，最好去掉
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -14,7 +14,7 @@ using namespace std;
 
 // TaskManager 构造函数
 TaskManager::TaskManager() : next_id(1), m_running(false) {
-    // 互斥锁和线程对象会自动默认构造
+    // 互斥锁、条件变量和线程对象会自动默认构造
     // 原子布尔值 m_running 初始化为 false
 }
 
@@ -112,7 +112,6 @@ void TaskManager::loadTasks() {
 
         if (file.fail()) break;
 
-        // 读取任务名称
         size_t name_len;
         file.read(reinterpret_cast<char*>(&name_len), sizeof(name_len));
         if (name_len > 0) {
@@ -123,7 +122,6 @@ void TaskManager::loadTasks() {
         
         if (file.fail()) break;
         
-        // 读取自定义分类名称
         size_t custom_cat_len;
         file.read(reinterpret_cast<char*>(&custom_cat_len), sizeof(custom_cat_len));
         if (custom_cat_len > 0) {
@@ -207,22 +205,6 @@ void TaskManager::rewriteTasksFile() {
     file.close();
 }
 
-/* --- 守护进程部分 ---(modified by 王博宇)
-
-void TaskManager::startReminderThread() {
-
-}
-
-void TaskManager::stopReminderThread() {
-
-}
-
-void TaskManager::reminderCheckLoop() {
-    // TODO: 这是一个循环:
-    // 1. sleep一段时间 (例如 30s)
-    // 2. 检查 m_running 标志
-    // 3. 遍历所有任务，如果 reminderTime 到达且未提醒，则打印提醒信息
-}*/
 // --- 守护进程部分 ---(modified by 王博宇)
 
 // 启动提醒线程
@@ -235,46 +217,61 @@ void TaskManager::startReminderThread() {
     // 设置运行标志为true，创建并启动线程
     m_running = true;
     reminder_thread = thread(&TaskManager::reminderCheckLoop, this);
-    
+    cout << "Reminder thread started." << endl;
 }
 
 // 停止提醒线程
 void TaskManager::stopReminderThread() {
     if (!m_running) {
-        
         return;
     }
 
-    // 设置运行标志为false，等待线程结束
+    // 1. 设置运行标志为false
     m_running = false;
+
+    // 2. **唤醒**可能正在睡眠的后台线程
+    m_cv.notify_one();
+
+    // 3. 等待线程安全退出。因为线程已被唤醒，join()会很快返回。
     if (reminder_thread.joinable()) {
-        reminder_thread.join();  // 阻塞等待线程退出
+        reminder_thread.join();
     }
-    
+    cout << "Reminder thread stopped." << endl;
 }
 
 // 提醒检查循环（后台线程执行函数）
 void TaskManager::reminderCheckLoop() {
-    // 循环检查直到m_running为false
+    cout << "Reminder check loop entered." << endl;
+    
+    // 循环直到 m_running 为 false
     while (m_running) {
+<<<<<<< HEAD
         // 1. 休眠30秒（可调整检查间隔）
         this_thread::sleep_for(chrono::seconds(5));
+=======
+        // 使用 unique_lock，因为 condition_variable 需要它
+        unique_lock<mutex> lock(tasks_mutex);
+>>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c
 
-        // 2. 检查运行标志（防止休眠期间被终止）
-        if (!m_running) break;
-
-        // 3. 线程安全地获取当前任务列表
-        vector<Task> current_tasks;
-        {
-            lock_guard<mutex> lock(tasks_mutex);  // 加锁保护任务列表
-            current_tasks = tasks;  // 复制任务列表到局部变量，减少锁持有时间
+        // 1. 等待30秒，或者被 stopReminderThread 唤醒
+        // m_cv.wait_for() 会检查 m_running 标志。如果被唤醒且 m_running 是 false，它会立即返回 true。
+        // 如果是超时，它会返回 false。
+        if (m_cv.wait_for(lock, chrono::seconds(30), [this]{ return !m_running.load(); })) {
+            // 如果是因为 m_running 变为 false 而被唤醒，则退出循环
+            break; 
         }
 
-        // 4. 遍历任务检查提醒时间
-        time_t now = time(nullptr);  // 当前时间戳
-        for (auto& task : current_tasks) {
-            // 检查条件：提醒时间有效 + 未过期 + 未提醒过
+        // 如果是超时唤醒，锁仍被持有，可以安全地检查任务
+        
+        // 2. 检查运行标志（双重检查，防止在等待和检查之间状态改变）
+        if (!m_running) break;
+
+        // 3. 遍历任务检查提醒时间（无需再复制，因为一直持有锁）
+        time_t now = time(nullptr);
+        for (auto& task : tasks) {
+            // 检查条件：提醒时间有效 + 已到期 + 未提醒过
             if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
+<<<<<<< HEAD
                 // 显示提醒信息
                 //showReminder(task);
 
@@ -294,11 +291,25 @@ void TaskManager::reminderCheckLoop() {
                 if (it != tasks.end()) {
                     it->reminded = true;
                 }
+=======
+                // 显示提醒信息（可以在这里调用一个线程安全的回调函数来通知UI）
+                cout << "Reminder for task: " << task.name << " for user: " << current_user << endl;
+                
+                // 标记任务为已提醒
+                task.reminded = true;
+>>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c
             }
         }
+        
+        // 当循环迭代结束时，lock 会自动释放互斥锁
     }
+<<<<<<< HEAD
 }
 }
 
 
     
+=======
+    cout << "Reminder check loop exited." << endl;
+}
+>>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c

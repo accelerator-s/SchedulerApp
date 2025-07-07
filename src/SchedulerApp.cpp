@@ -59,8 +59,10 @@ void SchedulerApp::on_activate() {
         if(login_window) add_window(*login_window);
         if(main_window) add_window(*main_window);
         if(register_window) add_window(*register_window);
-        if(change_password_window) add_window(*change_password_window); // 新增
-        
+        if(change_password_window) add_window(*change_password_window);
+        if(help_window) add_window(*help_window);
+        if(add_task_dialog) add_window(*add_task_dialog);
+
         if(login_window) login_window->show();
 
     } catch (const Glib::FileError& ex) {
@@ -75,17 +77,25 @@ void SchedulerApp::get_widgets() {
     m_builder->get_widget("register_window", register_window);
     m_builder->get_widget("main_window", main_window);
     m_builder->get_widget("help_window", help_window);
-    m_builder->get_widget("change_password_window", change_password_window); // 新增
+    m_builder->get_widget("change_password_window", change_password_window);
     m_builder->get_widget("login_username_entry", login_username_entry);
     m_builder->get_widget("login_password_entry", login_password_entry);
     m_builder->get_widget("register_username_entry", register_username_entry);
     m_builder->get_widget("register_password_entry", register_password_entry);
     m_builder->get_widget("register_confirm_password_entry", register_confirm_password_entry);
-    // 新增
+    
     m_builder->get_widget("cp_username_entry", cp_username_entry);
     m_builder->get_widget("cp_old_password_entry", cp_old_password_entry);
     m_builder->get_widget("cp_new_password_entry", cp_new_password_entry);
     m_builder->get_widget("cp_confirm_new_password_entry", cp_confirm_new_password_entry);
+    m_builder->get_widget("cp_old_password_label", cp_old_password_label); // 新增
+
+    // 新增: 获取菜单和菜单项
+    m_builder->get_widget("more_button", more_button);
+    m_builder->get_widget("menu_item_logout", menu_item_logout);
+    m_builder->get_widget("menu_item_change_password", menu_item_change_password);
+    m_builder->get_widget("menu_item_delete_account", menu_item_delete_account);
+    m_builder->get_widget("menu_item_help", menu_item_help);
 
     m_builder->get_widget("task_tree_view", task_tree_view);
     m_builder->get_widget("main_statusbar", main_statusbar);
@@ -108,10 +118,9 @@ void SchedulerApp::get_widgets() {
 
 void SchedulerApp::connect_signals() {
     Gtk::Button *login_button = nullptr, *register_button = nullptr, *add_task_button = nullptr, 
-                  *delete_task_button = nullptr, *logout_button = nullptr, *show_help_button = nullptr, 
-                  *help_close_button = nullptr, *add_task_ok_button = nullptr, *add_task_cancel_button = nullptr,
-                  *cp_confirm_button = nullptr; // 新增
-    Gtk::LinkButton *show_register_button = nullptr, *show_change_password_button = nullptr; // 新增
+                  *delete_task_button = nullptr, *cp_confirm_button = nullptr,
+                  *add_task_ok_button = nullptr, *add_task_cancel_button = nullptr;
+    Gtk::LinkButton *show_register_button = nullptr, *show_change_password_button = nullptr;
 
     m_builder->get_widget("login_button", login_button);
     if(login_button) login_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_login_button_clicked));
@@ -119,7 +128,6 @@ void SchedulerApp::connect_signals() {
     m_builder->get_widget("show_register_button", show_register_button);
     if(show_register_button) show_register_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_show_register_button_clicked));
     
-    // 新增
     m_builder->get_widget("show_change_password_button", show_change_password_button);
     if(show_change_password_button) show_change_password_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_show_change_password_button_clicked));
     
@@ -127,11 +135,9 @@ void SchedulerApp::connect_signals() {
     if(register_button) register_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_register_button_clicked));
     if(register_window) register_window->signal_delete_event().connect([this](GdkEventAny*){ if(register_window) register_window->hide(); return true; });
 
-    // 新增
     m_builder->get_widget("cp_confirm_button", cp_confirm_button);
     if(cp_confirm_button) cp_confirm_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_cp_confirm_button_clicked));
     if(change_password_window) change_password_window->signal_delete_event().connect([this](GdkEventAny*){ if(change_password_window) change_password_window->hide(); return true; });
-
 
     m_builder->get_widget("add_task_button", add_task_button);
     if(add_task_button) add_task_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_button_clicked));
@@ -139,15 +145,11 @@ void SchedulerApp::connect_signals() {
     m_builder->get_widget("delete_task_button", delete_task_button);
     if(delete_task_button) delete_task_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_delete_task_button_clicked));
 
-    m_builder->get_widget("logout_button", logout_button);
-    if(logout_button) logout_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_logout_button_clicked));
-    
-    m_builder->get_widget("show_help_button", show_help_button);
-    if(show_help_button) show_help_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_show_help_button_clicked));
-
-    m_builder->get_widget("help_close_button", help_close_button);
-    if(help_close_button) help_close_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_help_close_button_clicked));
-    if(help_window) help_window->signal_delete_event().connect([this](GdkEventAny*){ if(help_window) help_window->hide(); return true; });
+    // 连接菜单项信号
+    if(menu_item_logout) menu_item_logout->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_logout_activated));
+    if(menu_item_change_password) menu_item_change_password->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_change_password_activated));
+    if(menu_item_delete_account) menu_item_delete_account->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_delete_account_activated));
+    if(menu_item_help) menu_item_help->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_help_activated));
     
     m_builder->get_widget("add_task_ok_button", add_task_ok_button);
     if(add_task_ok_button) add_task_ok_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_ok_button_clicked));
@@ -165,7 +167,6 @@ void SchedulerApp::connect_signals() {
     }
 }
 
-// ... (on_login_button_clicked and other existing functions remain the same)
 void SchedulerApp::on_login_button_clicked() {
     if (!login_username_entry || !login_password_entry) return;
     string username = login_username_entry->get_text();
@@ -181,6 +182,7 @@ void SchedulerApp::on_login_button_clicked() {
         case UserManager::LoginResult::SUCCESS:
             m_current_user = username;
             m_task_manager.setCurrentUser(m_current_user);
+            m_task_manager.startReminderThread(); // 登录成功后启动提醒线程
             login_password_entry->set_text("");
             if(login_window) login_window->hide();
             if(main_window) main_window->show();
@@ -205,12 +207,26 @@ void SchedulerApp::on_show_register_button_clicked() {
     if(register_window) register_window->show(); 
 }
 
-// 新增：显示修改密码窗口
+// 修改：从登录页打开“忘记密码”
 void SchedulerApp::on_show_change_password_button_clicked() {
-    if(change_password_window) change_password_window->show();
+    m_is_changing_password_from_main = false;
+    if(change_password_window && cp_username_entry && cp_old_password_entry && cp_old_password_label && cp_new_password_entry && cp_confirm_new_password_entry) {
+        // 清空所有字段
+        cp_username_entry->set_text("");
+        cp_old_password_entry->set_text("");
+        cp_new_password_entry->set_text("");
+        cp_confirm_new_password_entry->set_text("");
+        
+        // 设置为“忘记密码”模式
+        cp_username_entry->set_sensitive(true); // 用户名可编辑，非灰色
+        cp_old_password_label->show();
+        cp_old_password_entry->show();
+        
+        change_password_window->show();
+        cp_username_entry->grab_focus(); // 默认焦点在用户名输入框
+    }
 }
 
-// 新增：处理修改密码逻辑
 void SchedulerApp::on_cp_confirm_button_clicked() {
     if (!cp_username_entry || !cp_old_password_entry || !cp_new_password_entry || !cp_confirm_new_password_entry) return;
 
@@ -219,25 +235,29 @@ void SchedulerApp::on_cp_confirm_button_clicked() {
     string new_pass1 = cp_new_password_entry->get_text();
     string new_pass2 = cp_confirm_new_password_entry->get_text();
 
-    if (username.empty() || old_pass.empty() || new_pass1.empty()) {
-        show_message("输入错误", "用户名、原密码和新密码均不能为空。");
-        return;
-    }
-
     if (new_pass1 != new_pass2) {
         show_message("输入错误", "两次输入的新密码不一致。");
         return;
     }
 
-    auto result = m_user_manager.changePassword(username, old_pass, new_pass1);
+    UserManager::ChangePasswordResult result;
+    if (m_is_changing_password_from_main) { // 登录后修改密码
+        if (new_pass1.empty()) {
+            show_message("输入错误", "新密码不能为空。");
+            return;
+        }
+        result = m_user_manager.updatePassword(m_current_user, new_pass1);
+    } else { // 忘记密码
+        if (username.empty() || old_pass.empty() || new_pass1.empty()) {
+            show_message("输入错误", "用户名、原密码和新密码均不能为空。");
+            return;
+        }
+        result = m_user_manager.changePassword(username, old_pass, new_pass1);
+    }
+
     switch (result) {
         case UserManager::ChangePasswordResult::SUCCESS:
             show_message("成功", "密码修改成功！");
-            // 清空输入框并关闭窗口
-            cp_username_entry->set_text("");
-            cp_old_password_entry->set_text("");
-            cp_new_password_entry->set_text("");
-            cp_confirm_new_password_entry->set_text("");
             if(change_password_window) change_password_window->hide();
             break;
         case UserManager::ChangePasswordResult::USER_NOT_FOUND:
@@ -252,27 +272,25 @@ void SchedulerApp::on_cp_confirm_button_clicked() {
     }
 }
 
-
 void SchedulerApp::on_register_button_clicked() {
     if (!register_username_entry || !register_password_entry || !register_confirm_password_entry) return;
     string username = register_username_entry->get_text();
     string pass1 = register_password_entry->get_text();
     string pass2 = register_confirm_password_entry->get_text();
 
-
-    //modified by wby
-    // 新增：密码长度检查
-
-    if (!UserManager::isPasswordValid(pass1)) {
-        show_message("注册错误", "密码必须至少6位，且同时包含大小写字母和数字！");
-        return; // 验证失败，直接返回
-    }
-
     // 检查用户名和密码是否为空
     if (username.empty() || pass1.empty()) {
         show_message("注册错误", "用户名和密码不能为空。");
         return;
     }
+
+    //modified by wby
+    // 新增：密码长度检查
+    if (!UserManager::isPasswordValid(pass1)) {
+        show_message("注册错误", "密码必须至少6位，且同时包含大小写字母和数字！");
+        return; // 验证失败，直接返回
+    }
+
     if (pass1 != pass2) {
         show_message("注册错误", "两次输入的密码不一致。");
         return;
@@ -286,13 +304,6 @@ void SchedulerApp::on_register_button_clicked() {
     } else {
         show_message("注册失败", "用户名可能已被占用。");
     }
-}
-
-void SchedulerApp::on_logout_button_clicked() {
-    m_current_user.clear();
-    if(main_window) main_window->hide();
-    if(login_window) login_window->show();
-    if(main_statusbar) main_statusbar->pop(1);
 }
 
 void SchedulerApp::on_add_task_button_clicked() {
@@ -320,12 +331,64 @@ void SchedulerApp::on_delete_task_button_clicked() {
     }
 }
 
-void SchedulerApp::on_show_help_button_clicked() { 
-    if(help_window) help_window->show(); 
+void SchedulerApp::on_menu_item_logout_activated() {
+    m_task_manager.stopReminderThread(); // 退出时停止提醒线程
+    m_current_user.clear();
+    if(main_window) main_window->hide();
+    if(login_window) login_window->show();
+    if(main_statusbar) main_statusbar->pop(1);
+    if(m_refTreeModel) m_refTreeModel->clear(); // 清空任务列表
 }
 
-void SchedulerApp::on_help_close_button_clicked() { 
-    if(help_window) help_window->hide(); 
+// 修改：从主窗口打开“修改密码”
+void SchedulerApp::on_menu_item_change_password_activated() {
+    m_is_changing_password_from_main = true;
+    if (change_password_window && cp_username_entry && cp_old_password_entry && cp_old_password_label && cp_new_password_entry && cp_confirm_new_password_entry) {
+        // 清空密码字段
+        cp_old_password_entry->set_text("");
+        cp_new_password_entry->set_text("");
+        cp_confirm_new_password_entry->set_text("");
+        
+        // 设置为“登录后修改”模式
+        cp_username_entry->set_text(m_current_user);
+        cp_username_entry->set_sensitive(false); // 用户名不可编辑，灰色状态
+        cp_old_password_label->hide();
+        cp_old_password_entry->hide(); // 隐藏原密码相关控件
+        
+        change_password_window->show();
+        cp_new_password_entry->grab_focus(); // 默认焦点在新密码输入框
+    }
+}
+
+// 在 SchedulerApp.cpp 中
+
+void SchedulerApp::on_menu_item_delete_account_activated() {
+    if (!main_window) return;
+
+    Gtk::MessageDialog dialog(*main_window, "删除账户警告", false, Gtk::MESSAGE_WARNING, Gtk::BUTTONS_YES_NO, true);
+    dialog.set_secondary_text("您确定要永久删除当前账户 (" + m_current_user + ") 吗？\n此操作不可恢复，所有相关任务数据都将被清除！");
+
+    int result = dialog.run();
+
+    if (result == Gtk::RESPONSE_YES) {
+
+        // 先将要删除的用户名保存到临时变量中，因为注销函数会清空 m_current_user。
+        string user_to_delete = m_current_user; 
+
+        // 首先执行完整的注销流程。，这将安全地停止后台提醒线程
+        on_menu_item_logout_activated();
+        
+        // 在程序已安全注销、后台线程已停止后，再执行删除操作。
+        if (m_user_manager.deleteUser(user_to_delete) == UserManager::DeleteResult::SUCCESS) {
+            show_message("成功", "账户 " + user_to_delete + " 已被成功删除。");
+        } else {
+            show_message("失败", "删除账户时发生未知错误。");
+        }
+    }
+}
+
+void SchedulerApp::on_menu_item_help_activated() {
+    if (help_window) help_window->show();
 }
 
 void SchedulerApp::on_add_task_ok_button_clicked() {
@@ -440,7 +503,7 @@ void SchedulerApp::on_task_start_time_button_clicked() {
         time_info.tm_mon = month;
         time_info.tm_mday = day;
         
-        if (get_time_from_user(time_info, calendar_dialog)) {
+        if (get_time_from_user(time_info, *add_task_dialog)) {
              m_selected_start_time = mktime(&time_info);
              if(task_start_time_button) task_start_time_button->set_label(time_t_to_string(m_selected_start_time));
              on_add_task_fields_changed();
@@ -599,12 +662,12 @@ void SchedulerApp::show_message(const string& title, const string& msg) {
     Gtk::Window* parent_window = nullptr;
     if (add_task_dialog && add_task_dialog->is_visible()){
         parent_window = add_task_dialog;
-    } else if (main_window && main_window->is_visible()) {
-        parent_window = main_window;
+    } else if (change_password_window && change_password_window->is_visible()) {
+        parent_window = change_password_window;
     } else if (register_window && register_window->is_visible()) {
         parent_window = register_window;
-    } else if (change_password_window && change_password_window->is_visible()) { // 新增
-        parent_window = change_password_window;
+    } else if (main_window && main_window->is_visible()) {
+        parent_window = main_window;
     } else {
         parent_window = login_window;
     }

@@ -3,10 +3,17 @@
 #include "Task.h"
 #include <vector>
 #include <string>
+<<<<<<< HEAD
 #include <thread>   // 用于线程
 #include <mutex>    // 用于互斥锁
 #include <atomic>   // 用于原子操作
 #include <functional> // 用于 std::function
+=======
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <condition_variable>
+>>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c
 
 class TaskManager {
 public:
@@ -32,8 +39,11 @@ private:
     long long next_id;
     string current_user;
 
+<<<<<<< HEAD
   ReminderCallback reminder_callback;  // 保存回调函数     
 
+=======
+>>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c
     // 文件操作
     void loadTasks();
     void saveTask(const Task& task);
@@ -46,4 +56,7 @@ private:
     thread reminder_thread;
     mutable mutex tasks_mutex; // 可变的互斥锁，以便在const成员函数中使用
     atomic<bool> m_running;
+    
+    // **新增：条件变量，用于唤醒睡眠中的线程**
+    condition_variable m_cv;
 };

@@ -25,12 +25,22 @@ public:
         INVALID_PASSWORD
     };
 
+    // 新增：删除账户结果的枚举
+    enum class DeleteResult {
+        SUCCESS,
+        FAILURE
+    };
+
     UserManager();
     bool registerUser(const string& username, const string& password);
     // 修改login函数的返回类型
     LoginResult login(const string& username, const string& password);
-    // 新增：修改密码函数
+    // 用于忘记密码（需要旧密码）
     ChangePasswordResult changePassword(const string& username, const string& oldPassword, const string& newPassword);
+    // 用于登录后修改密码（无需旧密码）
+    ChangePasswordResult updatePassword(const string& username, const string& newPassword);
+    // 删除账户
+    DeleteResult deleteUser(const string& username);
 
 private:
     const string users_file = "users.dat";
