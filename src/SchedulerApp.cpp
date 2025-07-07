@@ -241,6 +241,9 @@ void SchedulerApp::on_cp_confirm_button_clicked() {
         case UserManager::ChangePasswordResult::INCORRECT_PASSWORD:
             show_message("修改失败", "原密码错误。");
             break;
+        case UserManager::ChangePasswordResult::INVALID_PASSWORD:
+            show_message("修改失败", "密码必须至少6位，且同时包含大小写字母和数字！");
+            break;
     }
 }
 
@@ -259,22 +262,6 @@ void SchedulerApp::on_register_button_clicked() {
         show_message("注册错误", "密码必须至少6位，且同时包含大小写字母和数字！");
         return; // 验证失败，直接返回
     }
-    /*if (pass1.length() < 6) {
-        show_message("注册错误", "密码长度必须至少6位。");
-        return;
-    }
-
-    // 新增：密码复杂度检查（大小写、数字）
-    bool hasUpper = false, hasLower = false, hasDigit = false;
-    for (char c : pass1) {
-        if (isupper(c)) hasUpper = true;
-        else if (islower(c)) hasLower = true;
-        else if (isdigit(c)) hasDigit = true;
-    }
-    if (!hasUpper || !hasLower || !hasDigit) {
-        show_message("注册错误", "密码必须同时包含大小写字母和数字。");
-        return;
-    }//modified by wby*/
 
     // 检查用户名和密码是否为空
     if (username.empty() || pass1.empty()) {
@@ -296,7 +283,6 @@ void SchedulerApp::on_register_button_clicked() {
     }
 }
 
-// ... on_logout_button_clicked, on_add_task_button_clicked etc. ...
 void SchedulerApp::on_logout_button_clicked() {
     m_current_user.clear();
     if(main_window) main_window->hide();

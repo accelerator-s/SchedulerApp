@@ -21,7 +21,8 @@ public:
     enum class ChangePasswordResult {
         SUCCESS,
         USER_NOT_FOUND,
-        INCORRECT_PASSWORD
+        INCORRECT_PASSWORD,
+        INVALID_PASSWORD
     };
 
     UserManager();

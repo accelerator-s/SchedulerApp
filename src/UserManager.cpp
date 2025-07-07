@@ -25,9 +25,6 @@ bool UserManager::isPasswordValid(const std::string& password) {
         if (std::iswlower(wc)) hasLower = true;
         if (std::iswdigit(wc)) hasDigit = true;
     }
-    
-   
-    
 
     // 调试信息：打印当前密码的验证结果
     std::cerr << "密码验证 - 大写:" << hasUpper 
@@ -37,20 +34,6 @@ bool UserManager::isPasswordValid(const std::string& password) {
     // 3. 必须同时满足三个条件
     return hasUpper && hasLower && hasDigit;
 }
-
-/*
-// 新增：密码验证工具函数
-bool UserManager::isPasswordValid(const std::string& password) {
-        if (password.length() < 6) return false;
-
-        bool hasUpper = false, hasLower = false, hasDigit = false;
-        for (char c : password) {
-            if (isupper(c)) hasUpper = true;
-            else if (islower(c)) hasLower = true;
-            else if (isdigit(c)) hasDigit = true;
-        }
-        return hasUpper && hasLower && hasDigit;
-    }*/
 
 
 bool UserManager::registerUser(const string& username, const string& password) {
@@ -116,11 +99,17 @@ UserManager::ChangePasswordResult UserManager::changePassword(const string& user
         return ChangePasswordResult::INCORRECT_PASSWORD;
     }
 
-    // 3. 更新为新密码
-    string newHashedPassword = md5(newPassword);
-    it->second = newHashedPassword; // 或者 users[username] = newHashedPassword;
+    // 3. 检查新密码的合法性
+    if (!isPasswordValid(newPassword)) {
+        cerr << "Password change failed: New password does not meet complexity requirements." << endl;
+        return ChangePasswordResult::INVALID_PASSWORD;
+    }
 
-    // 4. 保存到文件
+    // 4. 更新为新密码
+    string newHashedPassword = md5(newPassword);
+    it->second = newHashedPassword;
+
+    // 5. 保存到文件
     saveUsers();
 
     cout << "Password for user '" << username << "' changed successfully." << endl;

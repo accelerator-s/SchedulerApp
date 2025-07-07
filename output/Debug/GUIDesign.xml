@@ -328,7 +328,7 @@
     <property name="title" translatable="yes">修改密码</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
-    <property name="window-position">center-on-parent</property>
+    <property name="window-position">center</property>
     <child>
       <object class="GtkFixed">
         <property name="visible">True</property>
@@ -628,7 +628,7 @@
             <property name="relief">none</property>
           </object>
           <packing>
-            <property name="x">282</property>
+            <property name="x">280</property>
             <property name="y">91</property>
           </packing>
         </child>
