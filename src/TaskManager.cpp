@@ -7,7 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
-#include <mutex>
+#include <condition_variable> // 新增：用于条件变量
 #include <vector>
 #include <ctime>
 using namespace std;
@@ -261,20 +261,31 @@ void TaskManager::reminderCheckLoop() {
         // 2. 检查运行标志（双重检查，防止在等待和检查之间状态改变）
         if (!m_running) break;
 
-        // 3. 遍历任务检查提醒时间（无需再复制，因为一直持有锁）
+        // 3. 复制任务列表到局部变量，减少锁持有时间
+        vector<Task> current_tasks = tasks;
+        lock.unlock(); // 立即释放锁，避免锁死
+
+        // 4. 遍历任务检查提醒时间（无锁状态）
         time_t now = time(nullptr);
-        for (auto& task : tasks) {
+        for (auto& task : current_tasks) {
             // 检查条件：提醒时间有效 + 已到期 + 未提醒过
             if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
-                // 显示提醒信息（可以在这里调用一个线程安全的回调函数来通知UI）
-                cout << "Reminder for task: " << task.name << " for user: " << current_user << endl;
-                
-                // 标记任务为已提醒
-                task.reminded = true;
+                // 触发回调函数通知UI层弹窗（线程安全）
+                if (reminder_callback) {
+                    string msg = task.name + " 任务提醒！\n开始时间: " + 
+                                 ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime);
+                    reminder_callback("提醒", msg);
+                }
+
+                // 重新加锁，标记任务为已提醒
+                lock_guard<mutex> update_lock(tasks_mutex);
+                auto it = find_if(tasks.begin(), tasks.end(), 
+                                 [&task](const Task& t) { return t.id == task.id; });
+                if (it != tasks.end()) {
+                    it->reminded = true;
+                }
             }
         }
-        
-        // 当循环迭代结束时，lock 会自动释放互斥锁
     }
     cout << "Reminder check loop exited." << endl;
 }

@@ -188,6 +188,11 @@ void SchedulerApp::on_login_button_clicked() {
             if(main_window) main_window->show();
             if(main_statusbar) main_statusbar->push("用户 " + m_current_user + " 已登录", 1);
             update_task_list();
+
+            // 关键：登录成功后调用on_login_success，注册回调并启动提醒线程
+            on_login_success();  // 添加这一行//modify just now
+
+            
             break;
         case UserManager::LoginResult::USER_NOT_FOUND:
             show_message("登录失败", "用户不存在。");
@@ -674,4 +679,25 @@ void SchedulerApp::show_message(const string& title, const string& msg) {
     } else {
         cerr << "Could not find a parent window for the message dialog: " << msg << endl;
     }
+}
+
+void SchedulerApp::on_login_success() {
+    m_task_manager.setCurrentUser(m_current_user);
+    // 注册提醒回调函数（关键！）
+    m_task_manager.setReminderCallback(
+        [this](const std::string& title, const std::string& msg) {
+            // 用signal_idle确保在主线程执行UI操作
+            Glib::signal_idle().connect_once(
+                [this, title, msg]() {
+                    this->show_message(title, msg);  // 主线程显示弹窗
+                }
+            );
+        }
+    );
+    m_task_manager.startReminderThread();
+}
+
+// 实现提醒处理函数（可选，直接在回调中调用show_message也可以）
+void SchedulerApp::on_reminder(const std::string& title, const std::string& msg) {
+    show_message(title, msg);
 }
