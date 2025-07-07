@@ -8,8 +8,8 @@
 
 using namespace std;
 
-// 辅助函数，将 time_t 转换为字符串
-string time_t_to_string(time_t time) {
+// 辅助函数，将 time_t 转换为字符串，用于“开始时间”和“结束时间”列
+string time_t_to_datetime_string(time_t time) {
     if (time == 0) return "N/A";
     char buffer[20];
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", localtime(&time));
@@ -37,6 +37,30 @@ string SchedulerApp::category_to_string(const Task& task) {
     }
 }
 
+// 计算任务状态
+string SchedulerApp::get_task_status(const Task& task, time_t current_time) {
+    if (current_time < task.startTime) {
+        return "未开始";
+    }
+    time_t end_time = task.startTime + (task.duration * 60);
+    if (current_time < end_time) {
+        return "进行中";
+    } else {
+        return "已结束";
+    }
+}
+
+// 计算提醒状态
+string SchedulerApp::get_reminder_status(const Task& task) {
+    if (task.reminderTime == 0) {
+        return "不提醒";
+    }
+    if (task.reminded) {
+        return "已提醒";
+    }
+    return "未提醒";
+}
+
 SchedulerApp::SchedulerApp() : Gtk::Application("org.cpp.scheduler.app") {}
 
 Glib::RefPtr<SchedulerApp> SchedulerApp::create() {
@@ -46,29 +70,23 @@ Glib::RefPtr<SchedulerApp> SchedulerApp::create() {
 void SchedulerApp::on_activate() {
     try {
         m_builder = Gtk::Builder::create_from_file("GUIDesign.xml");
-        
         get_widgets();
-        
         if (task_tree_view) {
             m_refTreeModel = Gtk::ListStore::create(m_Columns);
             task_tree_view->set_model(m_refTreeModel);
         }
-        
         connect_signals();
-
         if(login_window) add_window(*login_window);
         if(main_window) add_window(*main_window);
         if(register_window) add_window(*register_window);
         if(change_password_window) add_window(*change_password_window);
         if(help_window) add_window(*help_window);
         if(add_task_dialog) add_window(*add_task_dialog);
-
         if(login_window) login_window->show();
-
     } catch (const Glib::FileError& ex) {
-        cerr << "FileError: " << ex.what() << endl;
+        cerr << "文件错误: " << ex.what() << endl;
     } catch (const Gtk::BuilderError& ex) {
-        cerr << "BuilderError: " << ex.what() << endl;
+        cerr << "Builder错误: " << ex.what() << endl;
     }
 }
 
@@ -83,20 +101,16 @@ void SchedulerApp::get_widgets() {
     m_builder->get_widget("register_username_entry", register_username_entry);
     m_builder->get_widget("register_password_entry", register_password_entry);
     m_builder->get_widget("register_confirm_password_entry", register_confirm_password_entry);
-    
     m_builder->get_widget("cp_username_entry", cp_username_entry);
     m_builder->get_widget("cp_old_password_entry", cp_old_password_entry);
     m_builder->get_widget("cp_new_password_entry", cp_new_password_entry);
     m_builder->get_widget("cp_confirm_new_password_entry", cp_confirm_new_password_entry);
-    m_builder->get_widget("cp_old_password_label", cp_old_password_label); // 新增
-
-    // 新增: 获取菜单和菜单项
+    m_builder->get_widget("cp_old_password_label", cp_old_password_label);
     m_builder->get_widget("more_button", more_button);
     m_builder->get_widget("menu_item_logout", menu_item_logout);
     m_builder->get_widget("menu_item_change_password", menu_item_change_password);
     m_builder->get_widget("menu_item_delete_account", menu_item_delete_account);
     m_builder->get_widget("menu_item_help", menu_item_help);
-
     m_builder->get_widget("task_tree_view", task_tree_view);
     m_builder->get_widget("main_statusbar", main_statusbar);
     m_builder->get_widget("add_task_dialog", add_task_dialog);
@@ -124,46 +138,56 @@ void SchedulerApp::connect_signals() {
 
     m_builder->get_widget("login_button", login_button);
     if(login_button) login_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_login_button_clicked));
-
     m_builder->get_widget("show_register_button", show_register_button);
     if(show_register_button) show_register_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_show_register_button_clicked));
-    
     m_builder->get_widget("show_change_password_button", show_change_password_button);
     if(show_change_password_button) show_change_password_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_show_change_password_button_clicked));
-    
     m_builder->get_widget("register_button", register_button);
     if(register_button) register_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_register_button_clicked));
     if(register_window) register_window->signal_delete_event().connect([this](GdkEventAny*){ if(register_window) register_window->hide(); return true; });
-
     m_builder->get_widget("cp_confirm_button", cp_confirm_button);
     if(cp_confirm_button) cp_confirm_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_cp_confirm_button_clicked));
     if(change_password_window) change_password_window->signal_delete_event().connect([this](GdkEventAny*){ if(change_password_window) change_password_window->hide(); return true; });
-
     m_builder->get_widget("add_task_button", add_task_button);
     if(add_task_button) add_task_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_button_clicked));
-
     m_builder->get_widget("delete_task_button", delete_task_button);
     if(delete_task_button) delete_task_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_delete_task_button_clicked));
-
-    // 连接菜单项信号
     if(menu_item_logout) menu_item_logout->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_logout_activated));
     if(menu_item_change_password) menu_item_change_password->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_change_password_activated));
     if(menu_item_delete_account) menu_item_delete_account->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_delete_account_activated));
     if(menu_item_help) menu_item_help->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_help_activated));
-    
     m_builder->get_widget("add_task_ok_button", add_task_ok_button);
     if(add_task_ok_button) add_task_ok_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_ok_button_clicked));
-    
     m_builder->get_widget("add_task_cancel_button", add_task_cancel_button);
     if(add_task_cancel_button) add_task_cancel_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_cancel_button_clicked));
-    
     if(task_start_time_button) task_start_time_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_task_start_time_button_clicked));
     if(task_duration_spin) task_duration_spin->signal_value_changed().connect(sigc::mem_fun(*this, &SchedulerApp::on_add_task_fields_changed));
     if(task_category_combo) task_category_combo->signal_changed().connect(sigc::mem_fun(*this, &SchedulerApp::on_task_category_combo_changed));
-    
     if (task_reminder_entry) {
         task_reminder_entry->signal_focus_in_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_reminder_entry_focus_in));
         task_reminder_entry->signal_focus_out_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_reminder_entry_focus_out));
+    }
+    
+    if (task_tree_view) {
+        for(auto col : task_tree_view->get_columns()) {
+            task_tree_view->remove_column(*col);
+        }
+
+        task_tree_view->append_column("ID", m_Columns.m_col_id);
+        task_tree_view->get_column(0)->set_visible(false);
+        task_tree_view->append_column("任务名称", m_Columns.m_col_name);
+        task_tree_view->append_column("开始时间", m_Columns.m_col_start_time);
+        task_tree_view->append_column("持续时间", m_Columns.m_col_duration); // 新增
+        task_tree_view->append_column("结束时间", m_Columns.m_col_end_time);     // 新增
+        task_tree_view->append_column("优先级", m_Columns.m_col_priority);
+        task_tree_view->append_column("分类", m_Columns.m_col_category);
+        task_tree_view->append_column("提醒设置", m_Columns.m_col_reminder_time); // 标题改为提醒设置
+        task_tree_view->append_column("提醒状态", m_Columns.m_col_reminder_status);
+        task_tree_view->append_column("任务状态", m_Columns.m_col_task_status);
+
+        for(auto col : task_tree_view->get_columns()) {
+            col->set_resizable(true);
+        }
     }
 }
 
@@ -171,28 +195,21 @@ void SchedulerApp::on_login_button_clicked() {
     if (!login_username_entry || !login_password_entry) return;
     string username = login_username_entry->get_text();
     string password = login_password_entry->get_text();
-
     if (username.empty() || password.empty()) {
         show_message("登录错误", "用户名和密码不能为空。");
         return;
     }
-
     auto login_result = m_user_manager.login(username, password);
     switch (login_result) {
         case UserManager::LoginResult::SUCCESS:
             m_current_user = username;
             m_task_manager.setCurrentUser(m_current_user);
-            m_task_manager.startReminderThread(); // 登录成功后启动提醒线程
             login_password_entry->set_text("");
             if(login_window) login_window->hide();
             if(main_window) main_window->show();
             if(main_statusbar) main_statusbar->push("用户 " + m_current_user + " 已登录", 1);
             update_task_list();
-
-            // 关键：登录成功后调用on_login_success，注册回调并启动提醒线程
-            on_login_success();  // 添加这一行//modify just now
-
-            
+            on_login_success();
             break;
         case UserManager::LoginResult::USER_NOT_FOUND:
             show_message("登录失败", "用户不存在。");
@@ -207,54 +224,45 @@ void SchedulerApp::on_show_register_button_clicked() {
     if(register_window) register_window->show(); 
 }
 
-// 修改：从登录页打开“忘记密码”
 void SchedulerApp::on_show_change_password_button_clicked() {
     m_is_changing_password_from_main = false;
     if(change_password_window && cp_username_entry && cp_old_password_entry && cp_old_password_label && cp_new_password_entry && cp_confirm_new_password_entry) {
-        // 清空所有字段
         cp_username_entry->set_text("");
         cp_old_password_entry->set_text("");
         cp_new_password_entry->set_text("");
         cp_confirm_new_password_entry->set_text("");
-        
-        // 设置为“忘记密码”模式
-        cp_username_entry->set_sensitive(true); // 用户名可编辑，非灰色
+        cp_username_entry->set_sensitive(true);
         cp_old_password_label->show();
         cp_old_password_entry->show();
-        
         change_password_window->show();
-        cp_username_entry->grab_focus(); // 默认焦点在用户名输入框
+        cp_username_entry->grab_focus();
     }
 }
 
 void SchedulerApp::on_cp_confirm_button_clicked() {
     if (!cp_username_entry || !cp_old_password_entry || !cp_new_password_entry || !cp_confirm_new_password_entry) return;
-
     string username = cp_username_entry->get_text();
     string old_pass = cp_old_password_entry->get_text();
     string new_pass1 = cp_new_password_entry->get_text();
     string new_pass2 = cp_confirm_new_password_entry->get_text();
-
     if (new_pass1 != new_pass2) {
         show_message("输入错误", "两次输入的新密码不一致。");
         return;
     }
-
     UserManager::ChangePasswordResult result;
-    if (m_is_changing_password_from_main) { // 登录后修改密码
+    if (m_is_changing_password_from_main) {
         if (new_pass1.empty()) {
             show_message("输入错误", "新密码不能为空。");
             return;
         }
         result = m_user_manager.updatePassword(m_current_user, new_pass1);
-    } else { // 忘记密码
+    } else {
         if (username.empty() || old_pass.empty() || new_pass1.empty()) {
             show_message("输入错误", "用户名、原密码和新密码均不能为空。");
             return;
         }
         result = m_user_manager.changePassword(username, old_pass, new_pass1);
     }
-
     switch (result) {
         case UserManager::ChangePasswordResult::SUCCESS:
             show_message("成功", "密码修改成功！");
@@ -277,20 +285,14 @@ void SchedulerApp::on_register_button_clicked() {
     string username = register_username_entry->get_text();
     string pass1 = register_password_entry->get_text();
     string pass2 = register_confirm_password_entry->get_text();
-
-    // 检查用户名和密码是否为空
     if (username.empty() || pass1.empty()) {
         show_message("注册错误", "用户名和密码不能为空。");
         return;
     }
-
-    //modified by wby
-    // 新增：密码长度检查
     if (!UserManager::isPasswordValid(pass1)) {
         show_message("注册错误", "密码必须至少6位，且同时包含大小写字母和数字！");
-        return; // 验证失败，直接返回
+        return;
     }
-
     if (pass1 != pass2) {
         show_message("注册错误", "两次输入的密码不一致。");
         return;
@@ -332,53 +334,40 @@ void SchedulerApp::on_delete_task_button_clicked() {
 }
 
 void SchedulerApp::on_menu_item_logout_activated() {
-    m_task_manager.stopReminderThread(); // 退出时停止提醒线程
+    m_task_manager.stopReminderThread();
+    if(m_timer_connection) {
+        m_timer_connection.disconnect();
+    }
     m_current_user.clear();
     if(main_window) main_window->hide();
     if(login_window) login_window->show();
     if(main_statusbar) main_statusbar->pop(1);
-    if(m_refTreeModel) m_refTreeModel->clear(); // 清空任务列表
+    if(m_refTreeModel) m_refTreeModel->clear();
 }
 
-// 修改：从主窗口打开“修改密码”
 void SchedulerApp::on_menu_item_change_password_activated() {
     m_is_changing_password_from_main = true;
     if (change_password_window && cp_username_entry && cp_old_password_entry && cp_old_password_label && cp_new_password_entry && cp_confirm_new_password_entry) {
-        // 清空密码字段
         cp_old_password_entry->set_text("");
         cp_new_password_entry->set_text("");
         cp_confirm_new_password_entry->set_text("");
-        
-        // 设置为“登录后修改”模式
         cp_username_entry->set_text(m_current_user);
-        cp_username_entry->set_sensitive(false); // 用户名不可编辑，灰色状态
+        cp_username_entry->set_sensitive(false);
         cp_old_password_label->hide();
-        cp_old_password_entry->hide(); // 隐藏原密码相关控件
-        
+        cp_old_password_entry->hide();
         change_password_window->show();
-        cp_new_password_entry->grab_focus(); // 默认焦点在新密码输入框
+        cp_new_password_entry->grab_focus();
     }
 }
 
-// 在 SchedulerApp.cpp 中
-
 void SchedulerApp::on_menu_item_delete_account_activated() {
     if (!main_window) return;
-
     Gtk::MessageDialog dialog(*main_window, "删除账户警告", false, Gtk::MESSAGE_WARNING, Gtk::BUTTONS_YES_NO, true);
     dialog.set_secondary_text("您确定要永久删除当前账户 (" + m_current_user + ") 吗？\n此操作不可恢复，所有相关任务数据都将被清除！");
-
     int result = dialog.run();
-
     if (result == Gtk::RESPONSE_YES) {
-
-        // 先将要删除的用户名保存到临时变量中，因为注销函数会清空 m_current_user。
         string user_to_delete = m_current_user; 
-
-        // 首先执行完整的注销流程。，这将安全地停止后台提醒线程
         on_menu_item_logout_activated();
-        
-        // 在程序已安全注销、后台线程已停止后，再执行删除操作。
         if (m_user_manager.deleteUser(user_to_delete) == UserManager::DeleteResult::SUCCESS) {
             show_message("成功", "账户 " + user_to_delete + " 已被成功删除。");
         } else {
@@ -392,7 +381,7 @@ void SchedulerApp::on_menu_item_help_activated() {
 }
 
 void SchedulerApp::on_add_task_ok_button_clicked() {
-    if (!task_name_entry || !task_priority_combo || !task_category_combo || !task_custom_category_entry || !task_reminder_combo) {
+    if (!task_name_entry || !task_duration_spin || !task_priority_combo || !task_category_combo || !task_custom_category_entry || !task_reminder_combo) {
         show_message("代码错误", "一个或多个对话框控件指针为空。");
         return;
     }
@@ -417,6 +406,7 @@ void SchedulerApp::on_add_task_ok_button_clicked() {
     Task newTask;
     newTask.name = name;
     newTask.startTime = m_selected_start_time;
+    newTask.duration = task_duration_spin->get_value_as_int();
     
     string priority_str = task_priority_combo->get_active_text();
     if (priority_str == "高") newTask.priority = Priority::HIGH;
@@ -436,25 +426,32 @@ void SchedulerApp::on_add_task_ok_button_clicked() {
     }
 
     string reminder_text = task_reminder_combo->get_active_text();
+    if (task_reminder_combo->get_active_id() == "remind_custom") {
+        reminder_text = task_reminder_entry->get_text();
+    }
+    newTask.reminderOption = reminder_text; // 中文注释: 保存用户选择的提醒描述
+
     if (!reminder_text.empty() && reminder_text != "不提醒") {
         try {
-            std::smatch match;
-            if (std::regex_search(reminder_text, match, std::regex("(\\d+)\\s*分钟前"))) {
+            smatch match;
+            if (regex_search(reminder_text, match, regex("(\\d+)\\s*分钟前"))) {
                 newTask.reminderTime = newTask.startTime - (stoi(match[1].str()) * 60);
-            } else if (std::regex_search(reminder_text, match, std::regex("(\\d+)\\s*小时前"))) {
+            } else if (regex_search(reminder_text, match, regex("(\\d+)\\s*小时前"))) {
                 newTask.reminderTime = newTask.startTime - (stoi(match[1].str()) * 3600);
-            } else if (std::regex_search(reminder_text, match, std::regex("(\\d+)\\s*天前"))) {
+            } else if (regex_search(reminder_text, match, regex("(\\d+)\\s*天前"))) {
                  newTask.reminderTime = newTask.startTime - (stoi(match[1].str()) * 86400);
-            }
-             else { 
+            } else { 
                  int minutes = stoi(reminder_text);
                  if (minutes > 0) {
                      newTask.reminderTime = newTask.startTime - (minutes * 60);
                  } else {
                      newTask.reminderTime = 0;
                  }
-             }
-        } catch (...) { newTask.reminderTime = 0; }
+            }
+        } catch (...) { 
+            newTask.reminderTime = 0;
+            newTask.reminderOption = "不提醒"; // 如果解析失败，则设为不提醒
+        }
 
         if (newTask.reminderTime != 0) {
             if (newTask.reminderTime <= now) {
@@ -466,7 +463,10 @@ void SchedulerApp::on_add_task_ok_button_clicked() {
                 return;
             }
         }
-    } else { newTask.reminderTime = 0; }
+    } else { 
+        newTask.reminderTime = 0; 
+        newTask.reminderOption = "不提醒";
+    }
     
     if (m_task_manager.addTask(newTask)) {
         update_task_list();
@@ -483,10 +483,8 @@ void SchedulerApp::on_add_task_cancel_button_clicked() {
 
 void SchedulerApp::on_task_start_time_button_clicked() {
     if(!add_task_dialog) return;
-
     time_t initial_time = (m_selected_start_time != 0) ? m_selected_start_time : time(nullptr);
     tm time_info = *localtime(&initial_time);
-
     Gtk::Dialog calendar_dialog("选择日期", *add_task_dialog, true);
     Gtk::Calendar* calendar = Gtk::manage(new Gtk::Calendar());
     calendar->select_month(time_info.tm_mon, time_info.tm_year + 1900);
@@ -495,17 +493,15 @@ void SchedulerApp::on_task_start_time_button_clicked() {
     calendar_dialog.add_button("确定", Gtk::RESPONSE_OK);
     calendar_dialog.add_button("取消", Gtk::RESPONSE_CANCEL);
     calendar_dialog.show_all();
-    
     if (calendar_dialog.run() == Gtk::RESPONSE_OK) {
         unsigned int year, month, day;
         calendar->get_date(year, month, day);
         time_info.tm_year = year - 1900;
         time_info.tm_mon = month;
         time_info.tm_mday = day;
-        
-        if (get_time_from_user(time_info, *add_task_dialog)) {
+        if (get_time_from_user(time_info, calendar_dialog)) {
              m_selected_start_time = mktime(&time_info);
-             if(task_start_time_button) task_start_time_button->set_label(time_t_to_string(m_selected_start_time));
+             if(task_start_time_button) task_start_time_button->set_label(time_t_to_datetime_string(m_selected_start_time));
              on_add_task_fields_changed();
         }
     }
@@ -517,27 +513,22 @@ bool SchedulerApp::get_time_from_user(tm& time_struct, Gtk::Window& parent) {
     grid->set_border_width(10);
     grid->set_row_spacing(5);
     grid->set_column_spacing(5);
-
     Gtk::Label* hour_label = Gtk::manage(new Gtk::Label("小时:"));
     Gtk::SpinButton* hour_spin = Gtk::manage(new Gtk::SpinButton());
     hour_spin->set_adjustment(Gtk::Adjustment::create(time_struct.tm_hour, 0, 23, 1));
     hour_spin->set_digits(0);
-    
     Gtk::Label* min_label = Gtk::manage(new Gtk::Label("分钟:"));
     Gtk::SpinButton* min_spin = Gtk::manage(new Gtk::SpinButton());
     min_spin->set_adjustment(Gtk::Adjustment::create(time_struct.tm_min, 0, 59, 1));
     min_spin->set_digits(0);
-
     grid->attach(*hour_label, 0, 0, 1, 1);
     grid->attach(*hour_spin, 1, 0, 1, 1);
     grid->attach(*min_label, 0, 1, 1, 1);
     grid->attach(*min_spin, 1, 1, 1, 1);
-
     time_dialog.get_content_area()->pack_start(*grid);
     time_dialog.add_button("确定", Gtk::RESPONSE_OK);
     time_dialog.add_button("取消", Gtk::RESPONSE_CANCEL);
     time_dialog.show_all();
-
     if (time_dialog.run() == Gtk::RESPONSE_OK) {
         time_struct.tm_hour = hour_spin->get_value_as_int();
         time_struct.tm_min = min_spin->get_value_as_int();
@@ -571,49 +562,21 @@ bool SchedulerApp::on_reminder_entry_focus_in(GdkEventFocus* /*event*/) {
 }
 
 bool SchedulerApp::on_reminder_entry_focus_out(GdkEventFocus* /*event*/) {
-    if (!task_reminder_entry) {
-        return false;
-    }
-
+    if (!task_reminder_entry) { return false; }
     Glib::ustring text = task_reminder_entry->get_text();
-    
-    // 去除首尾空格
     const Glib::ustring whitespace = " \t\n\v\f\r";
     const auto first = text.find_first_not_of(whitespace);
-    if (first == Glib::ustring::npos) {
-        text.clear();
-    } else {
-        const auto last = text.find_last_not_of(whitespace);
-        text = text.substr(first, (last - first + 1));
-    }
-
-    if (text.empty()) {
-        task_reminder_entry->set_text("不提醒");
-        return false;
-    }
-    
-    if (text == "不提醒" || text.find("分钟前") != Glib::ustring::npos || 
-        text.find("小时前") != Glib::ustring::npos || text.find("天前") != Glib::ustring::npos) {
-        return false;
-    }
-
+    if (first == Glib::ustring::npos) { text.clear(); }
+    else { const auto last = text.find_last_not_of(whitespace); text = text.substr(first, (last - first + 1)); }
+    if (text.empty()) { task_reminder_entry->set_text("不提醒"); return false; }
+    if (text == "不提醒" || text.find("分钟前") != Glib::ustring::npos || text.find("小时前") != Glib::ustring::npos || text.find("天前") != Glib::ustring::npos) { return false; }
     try {
         size_t pos = 0;
-        long value = std::stol(text.raw(), &pos);
-
-        if (pos != text.bytes()) {
-            throw std::invalid_argument("Extra characters found");
-        }
-
-        if (value <= 0) {
-            task_reminder_entry->set_text("不提醒");
-        } else {
-            task_reminder_entry->set_text(std::to_string(value) + "分钟前");
-        }
-    } catch (const std::exception& e) {
-        task_reminder_entry->set_text("不提醒");
-    }
-
+        long value = stol(text.raw(), &pos);
+        if (pos != text.bytes()) { throw invalid_argument("Extra characters found"); }
+        if (value <= 0) { task_reminder_entry->set_text("不提醒"); }
+        else { task_reminder_entry->set_text(to_string(value) + "分钟前"); }
+    } catch (const exception& e) { task_reminder_entry->set_text("不提醒"); }
     return false;
 }
 
@@ -625,7 +588,7 @@ void SchedulerApp::update_end_time_label() {
     }
     int duration_minutes = task_duration_spin->get_value_as_int();
     time_t end_time = m_selected_start_time + duration_minutes * 60;
-    task_end_time_label->set_text(time_t_to_string(end_time));
+    task_end_time_label->set_text(time_t_to_datetime_string(end_time));
 }
 
 void SchedulerApp::reset_add_task_dialog() {
@@ -646,58 +609,67 @@ void SchedulerApp::reset_add_task_dialog() {
 void SchedulerApp::update_task_list() {
     if (!m_refTreeModel) return;
     m_refTreeModel->clear(); 
+    
     vector<Task> tasks = m_task_manager.getAllTasks();
+    time_t now = time(nullptr);
+
     for(const auto& task : tasks) {
         Gtk::TreeModel::Row row = *(m_refTreeModel->append());
         row[m_Columns.m_col_id] = task.id;
         row[m_Columns.m_col_name] = task.name;
-        row[m_Columns.m_col_start_time] = time_t_to_string(task.startTime);
-        row[m_Columns.m_col_reminder_time] = time_t_to_string(task.reminderTime);
+        row[m_Columns.m_col_start_time] = time_t_to_datetime_string(task.startTime);
+        row[m_Columns.m_col_duration] = to_string(task.duration) + "分钟"; // 填充持续时间
+        row[m_Columns.m_col_end_time] = time_t_to_datetime_string(task.startTime + task.duration * 60); // 填充结束时间
         row[m_Columns.m_col_priority] = priority_to_string(task.priority);
         row[m_Columns.m_col_category] = category_to_string(task);
+        row[m_Columns.m_col_reminder_time] = task.reminderOption; // 直接使用保存的描述
+        row[m_Columns.m_col_reminder_status] = get_reminder_status(task);
+        row[m_Columns.m_col_task_status] = get_task_status(task, now);
     }
 }
 
 void SchedulerApp::show_message(const string& title, const string& msg) {
     Gtk::Window* parent_window = nullptr;
-    if (add_task_dialog && add_task_dialog->is_visible()){
-        parent_window = add_task_dialog;
-    } else if (change_password_window && change_password_window->is_visible()) {
-        parent_window = change_password_window;
-    } else if (register_window && register_window->is_visible()) {
-        parent_window = register_window;
-    } else if (main_window && main_window->is_visible()) {
-        parent_window = main_window;
-    } else {
-        parent_window = login_window;
-    }
+    if (add_task_dialog && add_task_dialog->is_visible()){ parent_window = add_task_dialog; }
+    else if (change_password_window && change_password_window->is_visible()) { parent_window = change_password_window; }
+    else if (register_window && register_window->is_visible()) { parent_window = register_window; }
+    else if (main_window && main_window->is_visible()) { parent_window = main_window; }
+    else { parent_window = login_window; }
     
     if (parent_window) {
         Gtk::MessageDialog dialog(*parent_window, msg, false, Gtk::MESSAGE_INFO, Gtk::BUTTONS_OK, true);
         dialog.set_title(title);
+        dialog.set_keep_above(true);
         dialog.run();
     } else {
-        cerr << "Could not find a parent window for the message dialog: " << msg << endl;
+        cerr << "无法为消息对话框找到父窗口: " << msg << endl;
     }
 }
 
 void SchedulerApp::on_login_success() {
     m_task_manager.setCurrentUser(m_current_user);
-    // 注册提醒回调函数（关键！）
     m_task_manager.setReminderCallback(
-        [this](const std::string& title, const std::string& msg) {
-            // 用signal_idle确保在主线程执行UI操作
+        [this](const string& title, const string& msg) {
             Glib::signal_idle().connect_once(
                 [this, title, msg]() {
-                    this->show_message(title, msg);  // 主线程显示弹窗
+                    this->show_message(title, msg);
+                    this->update_task_list();
                 }
             );
         }
     );
     m_task_manager.startReminderThread();
+
+    m_timer_connection = Glib::signal_timeout().connect(
+        [this]() {
+            cout << "定时器触发: 正在刷新任务列表。" << endl;
+            this->update_task_list();
+            return true; // 返回 true 以保持定时器运行
+        }, 
+        60000 // 60000毫秒 = 1分钟
+    );
 }
 
-// 实现提醒处理函数（可选，直接在回调中调用show_message也可以）
-void SchedulerApp::on_reminder(const std::string& title, const std::string& msg) {
+void SchedulerApp::on_reminder(const string& title, const string& msg) {
     show_message(title, msg);
 }

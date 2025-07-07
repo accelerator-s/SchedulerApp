@@ -48,6 +48,6 @@ private:
     mutable mutex tasks_mutex; // 可变的互斥锁，以便在const成员函数中使用
     atomic<bool> m_running;
     
-    // **新增：条件变量，用于唤醒睡眠中的线程**
+    // 新增：条件变量，用于唤醒睡眠中的线程
     condition_variable m_cv;
 };

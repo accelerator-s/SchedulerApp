@@ -15,13 +15,14 @@ struct Task {
     long long id;
     string name;
     time_t startTime;
+    int duration;
     Priority priority;
     Category category;
     string customCategory;
     time_t reminderTime;
-
-    bool reminded = false;  // 是否已提醒(modified by 王博宇)
+    string reminderOption; // 新增：存储提醒选项的描述，如“15分钟前”
+    bool reminded = false;
     
     // 缺省构造函数
-    Task() : id(-1), startTime(0), priority(Priority::MEDIUM), category(Category::STUDY), reminderTime(0) {}
+    Task() : id(-1), startTime(0), duration(30), priority(Priority::MEDIUM), category(Category::STUDY), reminderTime(0), reminded(false) {}
 };

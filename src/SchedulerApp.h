@@ -8,14 +8,14 @@ class SchedulerApp : public Gtk::Application {
 public:
     SchedulerApp();
 
-    void on_reminder(const std::string& title, const std::string& msg);  // 提醒处理函数
-    // 添加on_login_success的声明（关键！）
-    void on_login_success();  // 声明该函数
+    void on_reminder(const std::string& title, const std::string& msg);
+    void on_login_success();
 
     static Glib::RefPtr<SchedulerApp> create();
 
     void on_activate() override;
 
+    // 中文注释: 为新列更新ModelColumns
     class ModelColumns : public Gtk::TreeModel::ColumnRecord
     {
     public:
@@ -24,17 +24,25 @@ public:
             add(m_col_id); 
             add(m_col_name);
             add(m_col_start_time);
+            add(m_col_duration);         // 新增
+            add(m_col_end_time);           // 新增
             add(m_col_priority);
             add(m_col_category);
             add(m_col_reminder_time);
+            add(m_col_reminder_status);
+            add(m_col_task_status);
         }
 
         Gtk::TreeModelColumn<long long> m_col_id;
         Gtk::TreeModelColumn<Glib::ustring> m_col_name;
         Gtk::TreeModelColumn<Glib::ustring> m_col_start_time;
+        Gtk::TreeModelColumn<Glib::ustring> m_col_duration;          // 新增
+        Gtk::TreeModelColumn<Glib::ustring> m_col_end_time;            // 新增
         Gtk::TreeModelColumn<Glib::ustring> m_col_priority;
         Gtk::TreeModelColumn<Glib::ustring> m_col_category;
         Gtk::TreeModelColumn<Glib::ustring> m_col_reminder_time;
+        Gtk::TreeModelColumn<Glib::ustring> m_col_reminder_status;
+        Gtk::TreeModelColumn<Glib::ustring> m_col_task_status;
     };
 
     ModelColumns m_Columns;
@@ -47,7 +55,7 @@ public:
     Gtk::Entry *register_username_entry = nullptr, *register_password_entry = nullptr, *register_confirm_password_entry = nullptr;
     
     Gtk::Entry *cp_username_entry = nullptr, *cp_old_password_entry = nullptr, *cp_new_password_entry = nullptr, *cp_confirm_new_password_entry = nullptr;
-    Gtk::Label *cp_old_password_label = nullptr; // 新增
+    Gtk::Label *cp_old_password_label = nullptr;
 
     Gtk::TreeView* task_tree_view = nullptr;
     Glib::RefPtr<Gtk::ListStore> m_refTreeModel;
@@ -76,7 +84,10 @@ public:
     UserManager m_user_manager;
     TaskManager m_task_manager;
     std::string m_current_user;
-    bool m_is_changing_password_from_main = false; // 区分修改密码的来源
+    bool m_is_changing_password_from_main = false;
+
+    // 用于管理定时器
+    sigc::connection m_timer_connection; 
 
     // UI初始化和管理
     void get_widgets();
@@ -90,6 +101,8 @@ public:
     std::string priority_to_string(Priority p);
     std::string category_to_string(const Task& task);
     bool get_time_from_user(tm& time_struct, Gtk::Window& parent);
+    std::string get_task_status(const Task& task, time_t current_time);
+    std::string get_reminder_status(const Task& task);
 
     // 信号处理函数
     void on_login_button_clicked();

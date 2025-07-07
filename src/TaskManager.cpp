@@ -1,5 +1,4 @@
 #include "TaskManager.h"
-// #include "SchedulerApp.h" // TaskManager不应该依赖UI层，最好去掉
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -7,9 +6,10 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
-#include <condition_variable> // 新增：用于条件变量
+#include <condition_variable>
 #include <vector>
 #include <ctime>
+
 using namespace std;
 
 // TaskManager 构造函数
@@ -30,7 +30,7 @@ void TaskManager::setCurrentUser(const string& username) {
     // 调用 loadTasks() 加载该用户的任务
     loadTasks();
     
-    cout << "Task manager set for user: " << username << ". Tasks will be loaded from " << tasks_file << endl;
+    cout << "任务管理器已为用户 " << username << " 设置。任务将从 " << tasks_file << " 加载。" << endl;
 }
 
 // 添加一个新任务
@@ -40,7 +40,7 @@ bool TaskManager::addTask(const Task& task) {
     // 1. 检查任务名称+开始时间是否唯一
     for (const auto& existing_task : tasks) {
         if (existing_task.name == task.name && existing_task.startTime == task.startTime) {
-            cerr << "Error: A task with the same name and start time already exists." << endl;
+            cerr << "错误: 一个同名且同开始时间的任务已存在。" << endl;
             return false;
         }
     }
@@ -60,7 +60,7 @@ bool TaskManager::addTask(const Task& task) {
         return a.startTime < b.startTime;
     });
 
-    cout << "Adding task: " << newTask.name << " with ID: " << newTask.id << endl;
+    cout << "正在添加任务: " << newTask.name << ", ID为: " << newTask.id << endl;
     return true;
 }
 
@@ -77,25 +77,24 @@ bool TaskManager::deleteTask(long long taskId) {
         tasks.erase(it);
         // 2. 重写整个任务文件
         rewriteTasksFile();
-        cout << "Successfully deleted task with ID: " << taskId << endl;
+        cout << "成功删除ID为 " << taskId << " 的任务。" << endl;
         return true;
     }
 
-    cerr << "Error: Task with ID " << taskId << " not found." << endl;
+    cerr << "错误: 未找到ID为 " << taskId << " 的任务。" << endl;
     return false;
 }
 
 // 获取所有任务的副本
 vector<Task> TaskManager::getAllTasks() const {
     lock_guard<mutex> lock(tasks_mutex);
-    // 任务列表在添加时已经排序，直接返回副本
     return tasks;
 }
 
 void TaskManager::loadTasks() {
     ifstream file(tasks_file, ios::binary);
     if (!file.is_open()) {
-        cout << "No existing task file for user " << current_user << ". A new one will be created." << endl;
+        cout << "用户 " << current_user << " 没有已存在的任务文件。将创建一个新的。" << endl;
         return;
     }
 
@@ -106,9 +105,11 @@ void TaskManager::loadTasks() {
         Task t;
         file.read(reinterpret_cast<char*>(&t.id), sizeof(t.id));
         file.read(reinterpret_cast<char*>(&t.startTime), sizeof(t.startTime));
+        file.read(reinterpret_cast<char*>(&t.duration), sizeof(t.duration));
         file.read(reinterpret_cast<char*>(&t.priority), sizeof(t.priority));
         file.read(reinterpret_cast<char*>(&t.category), sizeof(t.category));
         file.read(reinterpret_cast<char*>(&t.reminderTime), sizeof(t.reminderTime));
+        file.read(reinterpret_cast<char*>(&t.reminded), sizeof(t.reminded));
 
         if (file.fail()) break;
 
@@ -119,7 +120,6 @@ void TaskManager::loadTasks() {
             file.read(name_buf.data(), name_len);
             t.name.assign(name_buf.data(), name_len);
         }
-        
         if (file.fail()) break;
         
         size_t custom_cat_len;
@@ -129,7 +129,16 @@ void TaskManager::loadTasks() {
             file.read(custom_cat_buf.data(), custom_cat_len);
             t.customCategory.assign(custom_cat_buf.data(), custom_cat_len);
         }
+        if (file.fail()) break;
 
+        // 读取新增的 reminderOption 字段
+        size_t reminder_opt_len;
+        file.read(reinterpret_cast<char*>(&reminder_opt_len), sizeof(reminder_opt_len));
+        if (reminder_opt_len > 0) {
+            vector<char> reminder_opt_buf(reminder_opt_len);
+            file.read(reminder_opt_buf.data(), reminder_opt_len);
+            t.reminderOption.assign(reminder_opt_buf.data(), reminder_opt_len);
+        }
         if (file.fail()) break;
 
         tasks.push_back(t);
@@ -145,21 +154,23 @@ void TaskManager::loadTasks() {
         return a.startTime < b.startTime;
     });
 
-    cout << "Loaded " << tasks.size() << " tasks. Next ID is " << next_id << endl;
+    cout << "已加载 " << tasks.size() << " 个任务。下一个ID是 " << next_id << endl;
 }
 
 void TaskManager::saveTask(const Task& task) {
     ofstream file(tasks_file, ios::binary | ios::app);
     if (!file.is_open()) {
-        cerr << "Error: Could not open task file for appending: " << tasks_file << endl;
+        cerr << "错误: 无法打开任务文件进行追加: " << tasks_file << endl;
         return;
     }
 
     file.write(reinterpret_cast<const char*>(&task.id), sizeof(task.id));
     file.write(reinterpret_cast<const char*>(&task.startTime), sizeof(task.startTime));
+    file.write(reinterpret_cast<const char*>(&task.duration), sizeof(task.duration));
     file.write(reinterpret_cast<const char*>(&task.priority), sizeof(task.priority));
     file.write(reinterpret_cast<const char*>(&task.category), sizeof(task.category));
     file.write(reinterpret_cast<const char*>(&task.reminderTime), sizeof(task.reminderTime));
+    file.write(reinterpret_cast<const char*>(&task.reminded), sizeof(task.reminded));
     
     size_t name_len = task.name.length();
     file.write(reinterpret_cast<const char*>(&name_len), sizeof(name_len));
@@ -173,22 +184,31 @@ void TaskManager::saveTask(const Task& task) {
         file.write(task.customCategory.c_str(), custom_cat_len);
     }
 
+    // 中文注释: 保存新增的 reminderOption 字段
+    size_t reminder_opt_len = task.reminderOption.length();
+    file.write(reinterpret_cast<const char*>(&reminder_opt_len), sizeof(reminder_opt_len));
+    if (reminder_opt_len > 0) {
+        file.write(task.reminderOption.c_str(), reminder_opt_len);
+    }
+
     file.close();
 }
 
 void TaskManager::rewriteTasksFile() {
     ofstream file(tasks_file, ios::binary | ios::trunc);
     if (!file.is_open()) {
-        cerr << "Error: Could not open task file for rewriting: " << tasks_file << endl;
+        cerr << "错误: 无法打开任务文件进行重写: " << tasks_file << endl;
         return;
     }
 
     for (const auto& task : tasks) {
         file.write(reinterpret_cast<const char*>(&task.id), sizeof(task.id));
         file.write(reinterpret_cast<const char*>(&task.startTime), sizeof(task.startTime));
+        file.write(reinterpret_cast<const char*>(&task.duration), sizeof(task.duration));
         file.write(reinterpret_cast<const char*>(&task.priority), sizeof(task.priority));
         file.write(reinterpret_cast<const char*>(&task.category), sizeof(task.category));
         file.write(reinterpret_cast<const char*>(&task.reminderTime), sizeof(task.reminderTime));
+        file.write(reinterpret_cast<const char*>(&task.reminded), sizeof(task.reminded));
         
         size_t name_len = task.name.length();
         file.write(reinterpret_cast<const char*>(&name_len), sizeof(name_len));
@@ -201,23 +221,26 @@ void TaskManager::rewriteTasksFile() {
         if (custom_cat_len > 0) {
             file.write(task.customCategory.c_str(), custom_cat_len);
         }
+
+        // 中文注释: 保存新增的 reminderOption 字段
+        size_t reminder_opt_len = task.reminderOption.length();
+        file.write(reinterpret_cast<const char*>(&reminder_opt_len), sizeof(reminder_opt_len));
+        if (reminder_opt_len > 0) {
+            file.write(task.reminderOption.c_str(), reminder_opt_len);
+        }
     }
     file.close();
 }
 
-// --- 守护进程部分 ---(modified by 王博宇)
-
 // 启动提醒线程
 void TaskManager::startReminderThread() {
     if (m_running) {
-        cout << "Reminder thread is already running." << endl;
+        cout << "提醒线程已在运行。" << endl;
         return;
     }
-
-    // 设置运行标志为true，创建并启动线程
     m_running = true;
     reminder_thread = thread(&TaskManager::reminderCheckLoop, this);
-    cout << "Reminder thread started." << endl;
+    cout << "提醒线程已启动。" << endl;
 }
 
 // 停止提醒线程
@@ -225,67 +248,64 @@ void TaskManager::stopReminderThread() {
     if (!m_running) {
         return;
     }
-
-    // 1. 设置运行标志为false
     m_running = false;
-
-    // 2. **唤醒**可能正在睡眠的后台线程
     m_cv.notify_one();
-
-    // 3. 等待线程安全退出。因为线程已被唤醒，join()会很快返回。
     if (reminder_thread.joinable()) {
         reminder_thread.join();
     }
-    cout << "Reminder thread stopped." << endl;
+    cout << "提醒线程已停止。" << endl;
 }
 
 // 提醒检查循环（后台线程执行函数）
 void TaskManager::reminderCheckLoop() {
-    cout << "Reminder check loop entered." << endl;
+    cout << "进入提醒检查循环。" << endl;
     
-    // 循环直到 m_running 为 false
     while (m_running) {
-        // 使用 unique_lock，因为 condition_variable 需要它
         unique_lock<mutex> lock(tasks_mutex);
 
-        // 1. 等待30秒，或者被 stopReminderThread 唤醒
-        // m_cv.wait_for() 会检查 m_running 标志。如果被唤醒且 m_running 是 false，它会立即返回 true。
-        // 如果是超时，它会返回 false。
         if (m_cv.wait_for(lock, chrono::seconds(30), [this]{ return !m_running.load(); })) {
-            // 如果是因为 m_running 变为 false 而被唤醒，则退出循环
             break; 
         }
 
-        // 如果是超时唤醒，锁仍被持有，可以安全地检查任务
-        
-        // 2. 检查运行标志（双重检查，防止在等待和检查之间状态改变）
         if (!m_running) break;
-
-        // 3. 复制任务列表到局部变量，减少锁持有时间
-        vector<Task> current_tasks = tasks;
-        lock.unlock(); // 立即释放锁，避免锁死
-
-        // 4. 遍历任务检查提醒时间（无锁状态）
+        
+        vector<Task> reminders_to_fire;
+        bool changes_made = false;
         time_t now = time(nullptr);
-        for (auto& task : current_tasks) {
-            // 检查条件：提醒时间有效 + 已到期 + 未提醒过
+        
+        for (auto& task : tasks) {
             if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
-                // 触发回调函数通知UI层弹窗（线程安全）
-                if (reminder_callback) {
-                    string msg = task.name + " 任务提醒！\n开始时间: " + 
-                                 ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime);
-                    reminder_callback("提醒", msg);
+                task.reminded = true;
+                changes_made = true;
+                reminders_to_fire.push_back(task);
+            }
+        }
+
+        if (changes_made) {
+            cout << "为 " << reminders_to_fire.size() << " 个任务持久化'已提醒'状态。" << endl;
+            rewriteTasksFile();
+        }
+
+        lock.unlock();
+
+        for (const auto& task_to_remind : reminders_to_fire) {
+            if (reminder_callback) {
+                string startTimeStr = ctime(&task_to_remind.startTime);
+                if (!startTimeStr.empty() && startTimeStr.back() == '\n') {
+                    startTimeStr.pop_back();
                 }
 
-                // 重新加锁，标记任务为已提醒
-                lock_guard<mutex> update_lock(tasks_mutex);
-                auto it = find_if(tasks.begin(), tasks.end(), 
-                                 [&task](const Task& t) { return t.id == task.id; });
-                if (it != tasks.end()) {
-                    it->reminded = true;
+                string reminderTimeStr = ctime(&task_to_remind.reminderTime);
+                if (!reminderTimeStr.empty() && reminderTimeStr.back() == '\n') {
+                    reminderTimeStr.pop_back();
                 }
+
+                string msg = task_to_remind.name + " 任务提醒！\n开始时间: " + startTimeStr + 
+                             "\n提醒时间: " + reminderTimeStr;
+                
+                reminder_callback("提醒", msg);
             }
         }
     }
-    cout << "Reminder check loop exited." << endl;
+    cout << "退出提醒检查循环。" << endl;
 }
