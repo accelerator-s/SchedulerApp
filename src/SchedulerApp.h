@@ -8,11 +8,8 @@ class SchedulerApp : public Gtk::Application {
 public:
     SchedulerApp();
 
-
     static Glib::RefPtr<SchedulerApp> create();
 
-
-    // 重写Gtk::Application的虚函数
     void on_activate() override;
 
     class ModelColumns : public Gtk::TreeModel::ColumnRecord
@@ -40,10 +37,13 @@ public:
 
     // UI元素指针
     Glib::RefPtr<Gtk::Builder> m_builder;
-    Gtk::Window *login_window = nullptr, *register_window = nullptr, *main_window = nullptr, *help_window = nullptr;
+    Gtk::Window *login_window = nullptr, *register_window = nullptr, *main_window = nullptr, *help_window = nullptr, *change_password_window = nullptr; // 新增
     Gtk::Dialog *add_task_dialog = nullptr;
     Gtk::Entry *login_username_entry = nullptr, *login_password_entry = nullptr;
     Gtk::Entry *register_username_entry = nullptr, *register_password_entry = nullptr, *register_confirm_password_entry = nullptr;
+    // 新增：修改密码窗口的控件
+    Gtk::Entry *cp_username_entry = nullptr, *cp_old_password_entry = nullptr, *cp_new_password_entry = nullptr, *cp_confirm_new_password_entry = nullptr;
+
     Gtk::TreeView* task_tree_view = nullptr;
     Glib::RefPtr<Gtk::ListStore> m_refTreeModel;
     Gtk::Statusbar* main_statusbar = nullptr;
@@ -87,6 +87,9 @@ public:
     void on_delete_task_button_clicked();
     void on_show_help_button_clicked();
     void on_help_close_button_clicked();
+    // 新增：修改密码窗口的信号处理
+    void on_show_change_password_button_clicked();
+    void on_cp_confirm_button_clicked();
     
     // "添加任务" 对话框的信号处理
     void on_add_task_ok_button_clicked();

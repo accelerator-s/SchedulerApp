@@ -321,6 +321,142 @@
       </object>
     </child>
   </object>
+  <object class="GtkWindow" id="change_password_window">
+    <property name="width-request">380</property>
+    <property name="height-request">220</property>
+    <property name="can-focus">False</property>
+    <property name="title" translatable="yes">修改密码</property>
+    <property name="resizable">False</property>
+    <property name="modal">True</property>
+    <property name="window-position">center-on-parent</property>
+    <child>
+      <object class="GtkFixed">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">用户名：</property>
+            <attributes>
+              <attribute name="scale" value="1.2"/>
+            </attributes>
+          </object>
+          <packing>
+            <property name="x">25</property>
+            <property name="y">20</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="cp_username_entry">
+            <property name="width-request">236</property>
+            <property name="height-request">28</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+          </object>
+          <packing>
+            <property name="x">114</property>
+            <property name="y">20</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">原密码：</property>
+            <attributes>
+              <attribute name="scale" value="1.2"/>
+            </attributes>
+          </object>
+          <packing>
+            <property name="x">25</property>
+            <property name="y">60</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="cp_old_password_entry">
+            <property name="width-request">236</property>
+            <property name="height-request">28</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="visibility">False</property>
+          </object>
+          <packing>
+            <property name="x">114</property>
+            <property name="y">60</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">新密码：</property>
+            <attributes>
+              <attribute name="scale" value="1.2"/>
+            </attributes>
+          </object>
+          <packing>
+            <property name="x">25</property>
+            <property name="y">100</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="cp_new_password_entry">
+            <property name="width-request">236</property>
+            <property name="height-request">28</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="visibility">False</property>
+          </object>
+          <packing>
+            <property name="x">114</property>
+            <property name="y">100</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">确认新密码：</property>
+            <attributes>
+              <attribute name="scale" value="1.2"/>
+            </attributes>
+          </object>
+          <packing>
+            <property name="x">15</property>
+            <property name="y">140</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="cp_confirm_new_password_entry">
+            <property name="width-request">236</property>
+            <property name="height-request">28</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="visibility">False</property>
+          </object>
+          <packing>
+            <property name="x">114</property>
+            <property name="y">140</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="cp_confirm_button">
+            <property name="label" translatable="yes">确认修改</property>
+            <property name="width-request">85</property>
+            <property name="height-request">26</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="x">147</property>
+            <property name="y">180</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkTextBuffer" id="help_text_buffer">
     <property name="text" translatable="yes">软件功能简介：
 1. 账户管理：支持用户注册和登录。密码使用MD5加密存储，保证安全。
@@ -478,6 +614,21 @@
           </object>
           <packing>
             <property name="x">12</property>
+            <property name="y">91</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLinkButton" id="show_change_password_button">
+            <property name="label" translatable="yes">修改密码</property>
+            <property name="width-request">84</property>
+            <property name="height-request">24</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+            <property name="relief">none</property>
+          </object>
+          <packing>
+            <property name="x">282</property>
             <property name="y">91</property>
           </packing>
         </child>

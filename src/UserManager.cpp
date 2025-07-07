@@ -75,7 +75,6 @@ bool UserManager::registerUser(const string& username, const string& password) {
     return true;
 }
 
-// 实现返回 LoginResult 的版本
 UserManager::LoginResult UserManager::login(const string& username, const string& password) {
     cout << "Attempting to login user: " << username << endl;
 
@@ -99,11 +98,39 @@ UserManager::LoginResult UserManager::login(const string& username, const string
     }
 }
 
+// 新增：实现修改密码功能
+UserManager::ChangePasswordResult UserManager::changePassword(const string& username, const string& oldPassword, const string& newPassword) {
+    cout << "Attempting to change password for user: " << username << endl;
+
+    // 1. 检查用户是否存在
+    auto it = users.find(username);
+    if (it == users.end()) {
+        cerr << "Password change failed: User '" << username << "' not found." << endl;
+        return ChangePasswordResult::USER_NOT_FOUND;
+    }
+
+    // 2. 验证旧密码
+    string oldHashedPassword = md5(oldPassword);
+    if (it->second != oldHashedPassword) {
+        cerr << "Password change failed: Incorrect old password for user '" << username << "'." << endl;
+        return ChangePasswordResult::INCORRECT_PASSWORD;
+    }
+
+    // 3. 更新为新密码
+    string newHashedPassword = md5(newPassword);
+    it->second = newHashedPassword; // 或者 users[username] = newHashedPassword;
+
+    // 4. 保存到文件
+    saveUsers();
+
+    cout << "Password for user '" << username << "' changed successfully." << endl;
+    return ChangePasswordResult::SUCCESS;
+}
+
+
 void UserManager::loadUsers() {
     ifstream file(users_file);
     if (!file.is_open()) {
-        // 如果文件不存在，这是正常情况（首次运行或文件被删除）。
-        // 无需创建空文件，因为第一次注册成功后，saveUsers()会自动创建它。
         cerr << "Could not open users file: " << users_file 
              << ". It will be created upon first user registration." << endl;
         return;
@@ -122,7 +149,6 @@ void UserManager::loadUsers() {
 }
 
 void UserManager::saveUsers() {
-    // 以输出模式打开文件。如果文件不存在，会自动创建。如果存在，会清空内容。
     ofstream file(users_file, ios::out | ios::trunc);
     if (!file.is_open()) {
         cerr << "Error: Could not open users file for writing: " << users_file << endl;
