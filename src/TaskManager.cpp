@@ -7,7 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
-#include <mutex>
+#include <condition_variable> // 新增：用于条件变量
 #include <vector>
 #include <ctime>
 using namespace std;
@@ -245,13 +245,8 @@ void TaskManager::reminderCheckLoop() {
     
     // 循环直到 m_running 为 false
     while (m_running) {
-<<<<<<< HEAD
-        // 1. 休眠30秒（可调整检查间隔）
-        this_thread::sleep_for(chrono::seconds(5));
-=======
         // 使用 unique_lock，因为 condition_variable 需要它
         unique_lock<mutex> lock(tasks_mutex);
->>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c
 
         // 1. 等待30秒，或者被 stopReminderThread 唤醒
         // m_cv.wait_for() 会检查 m_running 标志。如果被唤醒且 m_running 是 false，它会立即返回 true。
@@ -266,50 +261,31 @@ void TaskManager::reminderCheckLoop() {
         // 2. 检查运行标志（双重检查，防止在等待和检查之间状态改变）
         if (!m_running) break;
 
-        // 3. 遍历任务检查提醒时间（无需再复制，因为一直持有锁）
+        // 3. 复制任务列表到局部变量，减少锁持有时间
+        vector<Task> current_tasks = tasks;
+        lock.unlock(); // 立即释放锁，避免锁死
+
+        // 4. 遍历任务检查提醒时间（无锁状态）
         time_t now = time(nullptr);
-        for (auto& task : tasks) {
+        for (auto& task : current_tasks) {
             // 检查条件：提醒时间有效 + 已到期 + 未提醒过
             if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
-<<<<<<< HEAD
-                // 显示提醒信息
-                //showReminder(task);
-
+                // 触发回调函数通知UI层弹窗（线程安全）
                 if (reminder_callback) {
-                    std::string msg = task.name + " 任务提醒！\n开始时间: " + 
-                                     ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime);
-                    reminder_callback("提醒", msg);  // 触发回调
+                    string msg = task.name + " 任务提醒！\n开始时间: " + 
+                                 ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime);
+                    reminder_callback("提醒", msg);
+                }
 
-                /*SchedulerApp s;
-                s.show_message("提醒", task.name + " 任务提醒！\n开始时间: " + 
-                             ctime(&task.startTime) + "提醒时间: " + ctime(&task.reminderTime));*/
-                // 标记任务为已提醒（线程安全地更新）
-                lock_guard<mutex> lock(tasks_mutex);
-                // 再次查找任务（防止期间任务被删除）
+                // 重新加锁，标记任务为已提醒
+                lock_guard<mutex> update_lock(tasks_mutex);
                 auto it = find_if(tasks.begin(), tasks.end(), 
                                  [&task](const Task& t) { return t.id == task.id; });
                 if (it != tasks.end()) {
                     it->reminded = true;
                 }
-=======
-                // 显示提醒信息（可以在这里调用一个线程安全的回调函数来通知UI）
-                cout << "Reminder for task: " << task.name << " for user: " << current_user << endl;
-                
-                // 标记任务为已提醒
-                task.reminded = true;
->>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c
             }
         }
-        
-        // 当循环迭代结束时，lock 会自动释放互斥锁
     }
-<<<<<<< HEAD
-}
-}
-
-
-    
-=======
     cout << "Reminder check loop exited." << endl;
 }
->>>>>>> db775d4e398de3b2778aff80a0b74f2c1814ef1c
