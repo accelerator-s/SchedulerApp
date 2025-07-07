@@ -6,6 +6,8 @@
 #include <cctype> // for isupper, islower, isdigit
 #include <cwctype>  // 宽字符处理
 #include <locale>   // 本地化支持
+#include <cstdio>   // for remove()
+
 UserManager::UserManager() {
     // 在构造函数中调用 loadUsers()，加载已存在的用户数据
     loadUsers();
@@ -81,7 +83,6 @@ UserManager::LoginResult UserManager::login(const string& username, const string
     }
 }
 
-// 新增：实现修改密码功能
 UserManager::ChangePasswordResult UserManager::changePassword(const string& username, const string& oldPassword, const string& newPassword) {
     cout << "Attempting to change password for user: " << username << endl;
 
@@ -114,6 +115,64 @@ UserManager::ChangePasswordResult UserManager::changePassword(const string& user
 
     cout << "Password for user '" << username << "' changed successfully." << endl;
     return ChangePasswordResult::SUCCESS;
+}
+
+UserManager::ChangePasswordResult UserManager::updatePassword(const std::string& username, const std::string& newPassword) {
+    cout << "Attempting to update password for logged-in user: " << username << endl;
+    
+    // 1. 检查用户是否存在（双重保险）
+    auto it = users.find(username);
+    if (it == users.end()) {
+        cerr << "Password update failed: User '" << username << "' not found." << endl;
+        return ChangePasswordResult::USER_NOT_FOUND;
+    }
+
+    // 2. 检查新密码的合法性
+    if (!isPasswordValid(newPassword)) {
+        cerr << "Password update failed: New password does not meet complexity requirements." << endl;
+        return ChangePasswordResult::INVALID_PASSWORD;
+    }
+
+    // 3. 直接更新为新密码
+    string newHashedPassword = md5(newPassword);
+    it->second = newHashedPassword;
+
+    // 4. 保存到文件
+    saveUsers();
+
+    cout << "Password for user '" << username << "' updated successfully." << endl;
+    return ChangePasswordResult::SUCCESS;
+}
+
+UserManager::DeleteResult UserManager::deleteUser(const std::string& username) {
+    cout << "Attempting to delete user: " << username << endl;
+    
+    // 1. 先检查用户是否存在于内存中
+    auto it = users.find(username);
+    if (it == users.end()) {
+        // 如果内存中不存在，也尝试删除文件以防万一，但报告操作失败
+        cerr << "Deletion failed: User '" << username << "' not found in map." << endl;
+        string task_file = username + "_tasks.dat";
+        remove(task_file.c_str()); // 清理可能存在的孤立文件
+        return DeleteResult::FAILURE;
+    }
+
+    // 2. 如果存在，则从内存的map中擦除
+    users.erase(it);
+    cout << "User '" << username << "' erased from memory map." << endl;
+
+    // 3. 重写整个用户文件，此时被删除的用户已不在map中
+    saveUsers();
+
+    // 4. 删除该用户的任务文件
+    string task_file = username + "_tasks.dat";
+    if (remove(task_file.c_str()) != 0) {
+        // 如果文件不存在，打印 "No such file or directory"
+        perror(("Info: Could not remove task file " + task_file).c_str());
+    }
+
+    cout << "User '" << username << "' and associated data deleted successfully." << endl;
+    return DeleteResult::SUCCESS;
 }
 
 

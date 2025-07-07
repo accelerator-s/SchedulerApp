@@ -37,16 +37,24 @@ public:
 
     // UI元素指针
     Glib::RefPtr<Gtk::Builder> m_builder;
-    Gtk::Window *login_window = nullptr, *register_window = nullptr, *main_window = nullptr, *help_window = nullptr, *change_password_window = nullptr; // 新增
+    Gtk::Window *login_window = nullptr, *register_window = nullptr, *main_window = nullptr, *help_window = nullptr, *change_password_window = nullptr;
     Gtk::Dialog *add_task_dialog = nullptr;
     Gtk::Entry *login_username_entry = nullptr, *login_password_entry = nullptr;
     Gtk::Entry *register_username_entry = nullptr, *register_password_entry = nullptr, *register_confirm_password_entry = nullptr;
-    // 新增：修改密码窗口的控件
+    
     Gtk::Entry *cp_username_entry = nullptr, *cp_old_password_entry = nullptr, *cp_new_password_entry = nullptr, *cp_confirm_new_password_entry = nullptr;
+    Gtk::Label *cp_old_password_label = nullptr; // 新增
 
     Gtk::TreeView* task_tree_view = nullptr;
     Glib::RefPtr<Gtk::ListStore> m_refTreeModel;
     Gtk::Statusbar* main_statusbar = nullptr;
+
+    // "更多" 菜单相关控件
+    Gtk::MenuButton* more_button = nullptr;
+    Gtk::MenuItem* menu_item_logout = nullptr;
+    Gtk::MenuItem* menu_item_change_password = nullptr;
+    Gtk::MenuItem* menu_item_delete_account = nullptr;
+    Gtk::MenuItem* menu_item_help = nullptr;
 
     // "添加任务" 对话框的控件
     Gtk::Entry* task_name_entry = nullptr;
@@ -64,6 +72,7 @@ public:
     UserManager m_user_manager;
     TaskManager m_task_manager;
     std::string m_current_user;
+    bool m_is_changing_password_from_main = false; // 区分修改密码的来源
 
     // UI初始化和管理
     void get_widgets();
@@ -82,14 +91,16 @@ public:
     void on_login_button_clicked();
     void on_show_register_button_clicked();
     void on_register_button_clicked();
-    void on_logout_button_clicked();
     void on_add_task_button_clicked();
     void on_delete_task_button_clicked();
-    void on_show_help_button_clicked();
-    void on_help_close_button_clicked();
-    // 新增：修改密码窗口的信号处理
     void on_show_change_password_button_clicked();
     void on_cp_confirm_button_clicked();
+
+    // "更多" 菜单的信号处理函数
+    void on_menu_item_logout_activated();
+    void on_menu_item_change_password_activated();
+    void on_menu_item_delete_account_activated();
+    void on_menu_item_help_activated();
     
     // "添加任务" 对话框的信号处理
     void on_add_task_ok_button_clicked();
@@ -98,7 +109,7 @@ public:
     void on_add_task_fields_changed();
     void on_task_category_combo_changed();
 
-    // 新增：提醒时间输入框的焦点事件处理
+    // 提醒时间输入框的焦点事件处理
     bool on_reminder_entry_focus_in(GdkEventFocus* event);
     bool on_reminder_entry_focus_out(GdkEventFocus* event);
 };

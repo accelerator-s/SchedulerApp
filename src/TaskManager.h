@@ -3,9 +3,10 @@
 #include "Task.h"
 #include <vector>
 #include <string>
-#include <thread>   // 用于线程
-#include <mutex>    // 用于互斥锁
-#include <atomic>   // 用于原子操作
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <condition_variable>
 
 class TaskManager {
 public:
@@ -23,8 +24,6 @@ private:
     long long next_id;
     string current_user;
 
-       
-
     // 文件操作
     void loadTasks();
     void saveTask(const Task& task);
@@ -37,4 +36,7 @@ private:
     thread reminder_thread;
     mutable mutex tasks_mutex; // 可变的互斥锁，以便在const成员函数中使用
     atomic<bool> m_running;
+    
+    // **新增：条件变量，用于唤醒睡眠中的线程**
+    condition_variable m_cv;
 };
