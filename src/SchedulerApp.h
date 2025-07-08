@@ -15,7 +15,7 @@ public:
 
     void on_activate() override;
 
-    // 中文注释: 更新列定义以匹配新的显示需求
+    // 更新列定义以匹配新的显示需求
     class ModelColumns : public Gtk::TreeModel::ColumnRecord
     {
     public:

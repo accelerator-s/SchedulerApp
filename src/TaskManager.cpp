@@ -30,7 +30,7 @@ void TaskManager::setCurrentUser(const string& username) {
     // 1. 正常加载任务
     loadTasks();
     
-    // 中文注释: 修复程序关闭期间错过提醒的BUG
+    // 修复程序关闭期间错过提醒的BUG
     // 2. 清理过期的、未提醒的任务
     time_t now = time(nullptr);
     bool changes_made = false;

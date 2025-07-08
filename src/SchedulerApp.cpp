@@ -16,7 +16,7 @@ string time_t_to_datetime_string(time_t time) {
     return buffer;
 }
 
-// 中文注释: 新的智能时间段格式化函数
+// 新的智能时间段格式化函数
 string SchedulerApp::format_timespan(time_t start_time, time_t end_time) {
     tm tm_start = *localtime(&start_time);
     tm tm_end = *localtime(&end_time);
@@ -197,7 +197,7 @@ void SchedulerApp::connect_signals() {
         task_reminder_entry->signal_focus_out_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_reminder_entry_focus_out));
     }
     
-    // 中文注释: 更新列的创建以匹配新的布局
+    // 更新列的创建以匹配新的布局
     if (task_tree_view) {
         for(auto col : task_tree_view->get_columns()) {
             task_tree_view->remove_column(*col);
@@ -280,7 +280,7 @@ void SchedulerApp::update_task_list() {
         Gtk::TreeModel::Row row = *(m_refTreeModel->append());
         row[m_Columns.m_col_id] = task.id;
         row[m_Columns.m_col_name] = task.name;
-        // 中文注释: 使用新的格式化函数填充任务时段列
+        // 使用新的格式化函数填充任务时段列
         row[m_Columns.m_col_timespan] = format_timespan(task.startTime, task.startTime + task.duration * 60);
         row[m_Columns.m_col_priority] = priority_to_string(task.priority);
         row[m_Columns.m_col_category] = category_to_string(task);
