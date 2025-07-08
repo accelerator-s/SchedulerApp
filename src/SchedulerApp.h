@@ -15,7 +15,7 @@ public:
 
     void on_activate() override;
 
-    // 中文注释: 为新列更新ModelColumns
+    // 中文注释: 更新列定义以匹配新的显示需求
     class ModelColumns : public Gtk::TreeModel::ColumnRecord
     {
     public:
@@ -23,24 +23,20 @@ public:
         { 
             add(m_col_id); 
             add(m_col_name);
-            add(m_col_start_time);
-            add(m_col_duration);         // 新增
-            add(m_col_end_time);           // 新增
+            add(m_col_timespan);           // 新增：任务时段列
             add(m_col_priority);
             add(m_col_category);
-            add(m_col_reminder_time);
+            add(m_col_reminder_option);    // 原 m_col_reminder_time，改名以反映内容
             add(m_col_reminder_status);
             add(m_col_task_status);
         }
 
         Gtk::TreeModelColumn<long long> m_col_id;
         Gtk::TreeModelColumn<Glib::ustring> m_col_name;
-        Gtk::TreeModelColumn<Glib::ustring> m_col_start_time;
-        Gtk::TreeModelColumn<Glib::ustring> m_col_duration;          // 新增
-        Gtk::TreeModelColumn<Glib::ustring> m_col_end_time;            // 新增
+        Gtk::TreeModelColumn<Glib::ustring> m_col_timespan;          // 新增
         Gtk::TreeModelColumn<Glib::ustring> m_col_priority;
         Gtk::TreeModelColumn<Glib::ustring> m_col_category;
-        Gtk::TreeModelColumn<Glib::ustring> m_col_reminder_time;
+        Gtk::TreeModelColumn<Glib::ustring> m_col_reminder_option;   // 改名
         Gtk::TreeModelColumn<Glib::ustring> m_col_reminder_status;
         Gtk::TreeModelColumn<Glib::ustring> m_col_task_status;
     };
@@ -103,6 +99,8 @@ public:
     bool get_time_from_user(tm& time_struct, Gtk::Window& parent);
     std::string get_task_status(const Task& task, time_t current_time);
     std::string get_reminder_status(const Task& task);
+    // 新增：智能时间格式化函数
+    std::string format_timespan(time_t start_time, time_t end_time);
 
     // 信号处理函数
     void on_login_button_clicked();

@@ -20,15 +20,33 @@ TaskManager::TaskManager() : next_id(1), m_running(false) {
 
 // 设置当前用户，加载其任务列表
 void TaskManager::setCurrentUser(const string& username) {
-    lock_guard<mutex> lock(tasks_mutex); // 锁定以修改内部状态
+    lock_guard<mutex> lock(tasks_mutex); 
     
     current_user = username;
     tasks_file = username + "_tasks.dat";
     tasks.clear();
-    next_id = 1; // 重置ID计数器
+    next_id = 1; 
     
-    // 调用 loadTasks() 加载该用户的任务
+    // 1. 正常加载任务
     loadTasks();
+    
+    // 中文注释: 修复程序关闭期间错过提醒的BUG
+    // 2. 清理过期的、未提醒的任务
+    time_t now = time(nullptr);
+    bool changes_made = false;
+    for (auto& task : tasks) {
+        // 条件：提醒时间有效 + 提醒时间已过去 + 但尚未标记为已提醒
+        if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded) {
+            task.reminded = true;  // 将其标记为已提醒
+            changes_made = true;   // 标记有变动，需要存盘
+            cout << "清理过期提醒: 任务 '" << task.name << "' (ID: " << task.id << ") 已被标记为提醒过。" << endl;
+        }
+    }
+    
+    // 3. 如果有任何状态被更新，立即重写文件以持久化
+    if (changes_made) {
+        rewriteTasksFile();
+    }
     
     cout << "任务管理器已为用户 " << username << " 设置。任务将从 " << tasks_file << " 加载。" << endl;
 }
@@ -37,7 +55,6 @@ void TaskManager::setCurrentUser(const string& username) {
 bool TaskManager::addTask(const Task& task) {
     lock_guard<mutex> lock(tasks_mutex);
 
-    // 1. 检查任务名称+开始时间是否唯一
     for (const auto& existing_task : tasks) {
         if (existing_task.name == task.name && existing_task.startTime == task.startTime) {
             cerr << "错误: 一个同名且同开始时间的任务已存在。" << endl;
@@ -46,16 +63,9 @@ bool TaskManager::addTask(const Task& task) {
     }
 
     Task newTask = task;
-    // 2. 分配唯一ID
     newTask.id = next_id++;
-    
-    // 3. 将任务添加到内存中的 tasks 向量
     tasks.push_back(newTask);
-    
-    // 4. 调用 saveTask() 将新任务追加到文件
     saveTask(newTask);
-    
-    // 5. 排序任务列表（按开始时间升序）
     sort(tasks.begin(), tasks.end(), [](const Task& a, const Task& b) {
         return a.startTime < b.startTime;
     });
@@ -68,14 +78,12 @@ bool TaskManager::addTask(const Task& task) {
 bool TaskManager::deleteTask(long long taskId) {
     lock_guard<mutex> lock(tasks_mutex);
 
-    // 1. 在内存中找到并删除任务
     auto it = find_if(tasks.begin(), tasks.end(), [taskId](const Task& task) {
         return task.id == taskId;
     });
 
     if (it != tasks.end()) {
         tasks.erase(it);
-        // 2. 重写整个任务文件
         rewriteTasksFile();
         cout << "成功删除ID为 " << taskId << " 的任务。" << endl;
         return true;
@@ -131,7 +139,6 @@ void TaskManager::loadTasks() {
         }
         if (file.fail()) break;
 
-        // 读取新增的 reminderOption 字段
         size_t reminder_opt_len;
         file.read(reinterpret_cast<char*>(&reminder_opt_len), sizeof(reminder_opt_len));
         if (reminder_opt_len > 0) {
@@ -184,7 +191,6 @@ void TaskManager::saveTask(const Task& task) {
         file.write(task.customCategory.c_str(), custom_cat_len);
     }
 
-    // 中文注释: 保存新增的 reminderOption 字段
     size_t reminder_opt_len = task.reminderOption.length();
     file.write(reinterpret_cast<const char*>(&reminder_opt_len), sizeof(reminder_opt_len));
     if (reminder_opt_len > 0) {
@@ -222,7 +228,6 @@ void TaskManager::rewriteTasksFile() {
             file.write(task.customCategory.c_str(), custom_cat_len);
         }
 
-        // 中文注释: 保存新增的 reminderOption 字段
         size_t reminder_opt_len = task.reminderOption.length();
         file.write(reinterpret_cast<const char*>(&reminder_opt_len), sizeof(reminder_opt_len));
         if (reminder_opt_len > 0) {
