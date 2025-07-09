@@ -781,13 +781,21 @@ void SchedulerApp::update_all_views()
 
 void SchedulerApp::update_view_specific_layout()
 {
+    // 确保所有需要的控件都已加载
     if (!m_month_view_pane || !m_week_view_pane || !m_date_navigation_box || !main_window)
         return;
 
+    // 判断当前是否为“日程列表”视图
     bool is_agenda = (m_current_view_mode == ViewMode::AGENDA);
-    m_date_navigation_box->set_visible(!is_agenda);
-    m_today_indicator_box->set_visible(!is_agenda);
 
+    // 1. 只控制“日期导航栏”（上/下一月）的可见性。
+    //    它与日程列表无关，所以需要隐藏。
+    m_date_navigation_box->set_visible(!is_agenda);
+
+    // 2. 确保对底部栏 m_today_indicator_box 的任何可见性控制都已移除。
+    //    这样它就会在所有视图中都保持可见。
+
+    // 3. 调整月/周视图中 Paned 控件的位置
     if (m_current_view_mode == ViewMode::MONTH)
     {
         m_month_view_pane->set_visible(true);
