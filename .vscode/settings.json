@@ -60,6 +60,11 @@
         "fstream": "cpp",
         "bitset": "cpp",
         "regex": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "variant": "cpp",
+        "charconv": "cpp",
+        "chrono": "cpp",
+        "format": "cpp",
+        "span": "cpp"
     }
 }
