@@ -146,7 +146,11 @@ void SchedulerApp::on_activate()
             ".other-month-day { color: @theme_unfocused_fg_color; }"
             ".selected-day-cell { border: 2px solid @theme_accent_bg_color; border-radius: 5px; }"
             ".view-button-active { border-bottom-width: 3px; border-bottom-style: solid; border-bottom-color: @theme_accent_bg_color; font-weight: bold; }"
-            ".task-label { font-size: small; background-color: alpha(@theme_button_bg_color, 0.7); color: @theme_button_fg_color; border-radius: 10px; padding: 2px 6px; margin-top: 2px; margin-bottom: 2px;}");
+            ".task-label { font-size: small; background-color: alpha(@theme_button_bg_color, 0.7); color: @theme_button_fg_color; border-radius: 10px; padding: 2px 6px; margin-top: 2px; margin-bottom: 2px;}"
+            // 新增样式
+            ".task-card { background-color: @theme_bg_color; border-radius: 12px; margin: 5px 10px; padding: 15px; box-shadow: 0 2px 5px alpha(black, 0.1); }"
+            ".category-tag { background-color: @theme_accent_bg_color; color: @theme_accent_fg_color; border-radius: 10px; padding: 3px 10px; font-size: small; }"
+            ".location-label { color: @theme_unfocused_fg_color; font-size: small; }");
         Gtk::StyleContext::add_provider_for_screen(
             Gdk::Screen::get_default(), css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
@@ -227,11 +231,9 @@ void SchedulerApp::get_widgets()
 
     m_builder->get_widget("main_stack", m_main_stack);
     m_builder->get_widget("month_view_pane", m_month_view_pane);
-    m_builder->get_widget("week_view_pane", m_week_view_pane);
     m_builder->get_widget("month_header_grid", m_month_header_grid);
     m_builder->get_widget("month_view_grid", m_month_view_grid);
     m_builder->get_widget("week_header_grid", m_week_header_grid);
-    m_builder->get_widget("week_view_grid", m_week_view_grid);
     m_builder->get_widget("date_navigation_box", m_date_navigation_box);
     m_builder->get_widget("current_date_label", m_current_date_label);
     m_builder->get_widget("prev_button", m_prev_button);
@@ -260,6 +262,12 @@ void SchedulerApp::get_widgets()
         auto adjustment = Gtk::Adjustment::create(30.0, 1.0, 999999.0, 5.0, 30.0, 0.0);
         task_duration_spin->set_adjustment(adjustment);
         task_duration_spin->set_digits(0);
+    }
+
+    for (int i = 0; i < 7; ++i)
+    {
+        m_builder->get_widget("week_day_button_" + std::to_string(i), m_week_day_buttons[i]);
+        m_builder->get_widget("week_day_label_" + std::to_string(i), m_week_day_labels[i]);
     }
 }
 
@@ -378,6 +386,25 @@ void SchedulerApp::connect_signals()
             {
                 col->set_resizable(true);
             }
+        }
+    }
+
+    for (int i = 0; i < 7; ++i)
+    {
+        if (m_week_day_buttons[i])
+        {
+            // Capture and store the sigc::connection object
+            m_week_day_signal_connections[i] = m_week_day_buttons[i]->signal_toggled().connect([this, i]()
+                                                                                               {
+                if (m_week_day_buttons[i]->get_active()) {
+                    tm new_selected_tm = *localtime(&m_displayed_date);
+                    new_selected_tm.tm_mday -= new_selected_tm.tm_wday;
+                    new_selected_tm.tm_mday += i;
+                    this->m_selected_date = mktime(&new_selected_tm);
+                    
+                    this->update_selected_day_details();
+                    this->update_date_label_and_indicator();
+                } });
         }
     }
 }
@@ -656,13 +683,13 @@ void SchedulerApp::on_prev_button_clicked()
             displayed_tm.tm_mon--;
         }
     }
-    else
-    { // WEEK
+    else // 正确处理周视图
+    {
         displayed_tm.tm_mday -= 7;
     }
     m_displayed_date = mktime(&displayed_tm);
-    m_selected_date = m_displayed_date; // 翻页时，默认选中第一天
-    update_all_views();
+    m_selected_date = m_displayed_date; // 翻页时，默认选中新视图的第一天
+    update_all_views();                 // 触发全局刷新
 }
 
 void SchedulerApp::on_next_button_clicked()
@@ -680,13 +707,13 @@ void SchedulerApp::on_next_button_clicked()
             displayed_tm.tm_mon++;
         }
     }
-    else
-    { // WEEK
+    else // 正确处理周视图
+    {
         displayed_tm.tm_mday += 7;
     }
     m_displayed_date = mktime(&displayed_tm);
-    m_selected_date = m_displayed_date; // 翻页时，默认选中第一天
-    update_all_views();
+    m_selected_date = m_displayed_date; // 翻页时，默认选中新视图的第一天
+    update_all_views();                 // 触发全局刷新
 }
 
 void SchedulerApp::on_today_button_clicked()
@@ -756,8 +783,12 @@ void SchedulerApp::update_all_views()
     if (!m_main_stack)
         return;
 
-    update_view_specific_layout(); // 首先调整布局
+    // 1. 首先更新所有视图通用的UI元素
+    update_view_specific_layout();     // 调整日期导航等
+    update_view_switcher_ui();         // 更新顶部视图切换按钮的样式
+    update_date_label_and_indicator(); // 更新底部栏的日期和周数
 
+    // 2. 根据当前模式，切换Stack页面并填充该视图
     switch (m_current_view_mode)
     {
     case ViewMode::MONTH:
@@ -766,7 +797,7 @@ void SchedulerApp::update_all_views()
         break;
     case ViewMode::WEEK:
         m_main_stack->set_visible_child("week_view");
-        populate_week_view();
+        populate_week_view(); // 填充周视图的日期条
         break;
     case ViewMode::AGENDA:
         m_main_stack->set_visible_child("agenda_view");
@@ -774,37 +805,27 @@ void SchedulerApp::update_all_views()
         break;
     }
 
-    update_date_label_and_indicator();
-    update_view_switcher_ui();
+    // 3. 最后，更新所有视图都可能依赖的“选中日详情”部分
+    //    对于月/周视图，这是下方的任务列表
     update_selected_day_details();
 }
 
 void SchedulerApp::update_view_specific_layout()
 {
-    // 确保所有需要的控件都已加载
-    if (!m_month_view_pane || !m_week_view_pane || !m_date_navigation_box || !main_window)
+    if (!m_month_view_pane || !m_date_navigation_box || !main_window)
         return;
 
-    // 判断当前是否为“日程列表”视图
     bool is_agenda = (m_current_view_mode == ViewMode::AGENDA);
 
-    // 1. 只控制“日期导航栏”（上/下一月）的可见性。
-    //    它与日程列表无关，所以需要隐藏。
+    // 日期导航栏（上/下一月）仅在月/周视图显示，因为它与日程列表无关
     m_date_navigation_box->set_visible(!is_agenda);
 
-    // 2. 确保对底部栏 m_today_indicator_box 的任何可见性控制都已移除。
-    //    这样它就会在所有视图中都保持可见。
+    // 我们不再根据视图模式隐藏底部栏的任何部分。
 
-    // 3. 调整月/周视图中 Paned 控件的位置
+    // Paned 控件的位置调整
     if (m_current_view_mode == ViewMode::MONTH)
     {
-        m_month_view_pane->set_visible(true);
         m_month_view_pane->set_position(main_window->get_height() / 2);
-    }
-    if (m_current_view_mode == ViewMode::WEEK)
-    {
-        m_week_view_pane->set_visible(true);
-        m_week_view_pane->set_position(main_window->get_height() / 2);
     }
 }
 
@@ -883,101 +904,61 @@ void SchedulerApp::populate_month_view()
 // 填充周视图
 void SchedulerApp::populate_week_view()
 {
-    if (!m_week_view_grid || !m_week_header_grid)
-        return;
-
-    for (auto *child : m_week_view_grid->get_children())
-    {
-        m_week_view_grid->remove(*child);
-    }
-    for (auto *child : m_week_header_grid->get_children())
-    {
-        m_week_header_grid->remove(*child);
-    }
-
-    const char *days_of_week[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
-
-    tm displayed_tm = *localtime(&m_displayed_date);
-    time_t today_t;
-    time(&today_t);
-    tm today_tm = *localtime(&today_t);
+    // 准备日期数据
+    tm iterator_tm = *localtime(&m_displayed_date);
+    iterator_tm.tm_mday -= iterator_tm.tm_wday;
+    mktime(&iterator_tm);
     tm selected_tm = *localtime(&m_selected_date);
 
-    displayed_tm.tm_mday -= displayed_tm.tm_wday;
-    mktime(&displayed_tm);
-
-    vector<Task> all_tasks = m_task_manager.getAllTasks();
-
+    // 循环更新7个预定义的按钮
     for (int col = 0; col < 7; ++col)
     {
+        if (!m_week_day_buttons[col] || !m_week_day_labels[col])
+            continue;
+
+        const char *days_of_week[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
         char day_num_buf[4];
-        strftime(day_num_buf, sizeof(day_num_buf), "%d", &displayed_tm);
-        auto header_label = Gtk::make_managed<Gtk::Label>(string(days_of_week[col]) + "\n" + day_num_buf);
-        header_label->set_justify(Gtk::JUSTIFY_CENTER);
-        m_week_header_grid->attach(*header_label, col, 0);
+        strftime(day_num_buf, sizeof(day_num_buf), "%d", &iterator_tm);
+        std::string label_text = std::string(days_of_week[col]) + "\n" + day_num_buf;
+        m_week_day_labels[col]->set_text(label_text);
 
-        auto scrolled_window = Gtk::make_managed<Gtk::ScrolledWindow>();
-        scrolled_window->set_policy(Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC);
-        auto day_vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 2);
-        day_vbox->set_margin_top(5);
-        day_vbox->set_margin_start(5);
-        day_vbox->set_margin_end(5);
-        scrolled_window->add(*day_vbox);
-
-        auto event_box = Gtk::make_managed<Gtk::EventBox>();
-        event_box->add(*scrolled_window);
-        time_t current_cell_date_t = mktime(&displayed_tm);
-        event_box->signal_button_press_event().connect(sigc::bind(sigc::mem_fun(*this, &SchedulerApp::on_day_cell_button_press), current_cell_date_t));
-
-        auto cell_frame = Gtk::make_managed<Gtk::Frame>();
-        cell_frame->add(*event_box);
-        cell_frame->set_shadow_type(Gtk::SHADOW_NONE);
-
-        if (displayed_tm.tm_yday == today_tm.tm_yday && displayed_tm.tm_year == today_tm.tm_year)
-            cell_frame->get_style_context()->add_class("today-cell");
-        if (displayed_tm.tm_yday == selected_tm.tm_yday && displayed_tm.tm_year == selected_tm.tm_year)
-            cell_frame->get_style_context()->add_class("selected-day-cell");
-
-        tm start_of_day_tm = displayed_tm;
-        start_of_day_tm.tm_hour = 0;
-        start_of_day_tm.tm_min = 0;
-        start_of_day_tm.tm_sec = 0;
-        time_t start_of_day = mktime(&start_of_day_tm);
-        time_t start_of_next_day = start_of_day + 86400;
-
-        for (const auto &task : all_tasks)
+        if (m_week_day_signal_connections[col].connected())
         {
-            if (task.startTime >= start_of_day && task.startTime < start_of_next_day)
-            {
-                char time_buf[10];
-                strftime(time_buf, sizeof(time_buf), "%H:%M", localtime(&task.startTime));
-                auto task_label = Gtk::make_managed<Gtk::Label>(string(time_buf) + " " + task.name, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
-                task_label->set_ellipsize(Pango::ELLIPSIZE_END);
-                task_label->get_style_context()->add_class("task-label");
-
-                auto task_event_box = Gtk::make_managed<Gtk::EventBox>();
-                task_event_box->add(*task_label);
-                task_event_box->signal_button_press_event().connect(sigc::bind(sigc::mem_fun(*this, &SchedulerApp::on_task_label_button_press), task.id, start_of_day));
-                day_vbox->pack_start(*task_event_box, false, false);
-            }
+            m_week_day_signal_connections[col].block();
         }
 
-        m_week_view_grid->attach(*cell_frame, col, 0);
-        displayed_tm.tm_mday++;
-        mktime(&displayed_tm);
+        if (iterator_tm.tm_yday == selected_tm.tm_yday && iterator_tm.tm_year == selected_tm.tm_year)
+        {
+            m_week_day_buttons[col]->set_active(true);
+        }
+        else
+        {
+            m_week_day_buttons[col]->set_active(false);
+        }
+
+        if (m_week_day_signal_connections[col].connected())
+        {
+            m_week_day_signal_connections[col].unblock();
+        }
+
+        // 移至下一天
+        iterator_tm.tm_mday++;
+        mktime(&iterator_tm);
     }
-    m_week_view_grid->show_all();
-    m_week_header_grid->show_all();
+
+    // 加载对应日期的任务
+    update_selected_day_details();
 }
 
+// 更新选定日期的任务详情列表 (最终修正版)
 void SchedulerApp::update_selected_day_details()
 {
     Gtk::ListBox *current_list_box = nullptr;
-    if (m_current_view_mode == ViewMode::MONTH && m_selected_day_events_listbox)
+    if (m_current_view_mode == ViewMode::MONTH)
     {
         current_list_box = m_selected_day_events_listbox;
     }
-    else if (m_current_view_mode == ViewMode::WEEK && m_week_selected_day_events_listbox)
+    else if (m_current_view_mode == ViewMode::WEEK)
     {
         current_list_box = m_week_selected_day_events_listbox;
     }
@@ -990,36 +971,70 @@ void SchedulerApp::update_selected_day_details()
         current_list_box->remove(*child);
     }
 
+    // **修正 Bug 3**: 严格根据 m_selected_date 计算当天的起止时间戳
     tm start_of_day_tm = *localtime(&m_selected_date);
     start_of_day_tm.tm_hour = 0;
     start_of_day_tm.tm_min = 0;
     start_of_day_tm.tm_sec = 0;
     time_t start_of_day = mktime(&start_of_day_tm);
-    time_t start_of_next_day = start_of_day + 86400;
+    time_t end_of_day = start_of_day + 86400; // 第二天零点
 
     vector<Task> tasks = m_task_manager.getAllTasks();
+    std::sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
+              { return a.startTime < b.startTime; });
 
     for (const auto &task : tasks)
     {
-        if (task.startTime >= start_of_day && task.startTime < start_of_next_day)
+        // 严格过滤，确保任务的开始时间在选中日的00:00:00和23:59:59之间
+        if (task.startTime >= start_of_day && task.startTime < end_of_day)
         {
             auto row = Gtk::make_managed<Gtk::ListBoxRow>();
-            auto box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 10);
-            box->set_margin_top(5);
-            box->set_margin_bottom(5);
-            box->set_margin_start(10);
-            box->set_margin_end(10);
+            auto event_box = Gtk::make_managed<Gtk::EventBox>();
 
+            auto card_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 8);
+            card_box->get_style_context()->add_class("task-card");
+
+            auto line1_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 0);
             time_t end_time = task.startTime + task.duration * 60;
             auto time_label = Gtk::make_managed<Gtk::Label>(format_timespan(task.startTime, end_time));
-            auto name_label = Gtk::make_managed<Gtk::Label>(task.name);
+            auto name_label = Gtk::make_managed<Gtk::Label>();
+            name_label->set_markup("<b>" + task.name + "</b>");
             name_label->set_hexpand(true);
             name_label->set_halign(Gtk::ALIGN_START);
+            line1_box->pack_start(*time_label, false, false, 10);
+            line1_box->pack_start(*name_label);
 
-            box->pack_start(*time_label, false, false);
-            box->pack_start(*name_label);
-            row->add(*box);
+            auto line2_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 10);
+            auto category_label = Gtk::make_managed<Gtk::Label>(category_to_string(task));
+            category_label->get_style_context()->add_class("category-tag");
+            auto alarm_icon = Gtk::make_managed<Gtk::Image>();
+            alarm_icon->set_from_icon_name("alarm-symbolic", Gtk::ICON_SIZE_MENU);
+            auto remind_label = Gtk::make_managed<Gtk::Label>("提醒时间：" + task.reminderOption);
+            remind_label->get_style_context()->add_class("remind-label");
+
+            line2_box->pack_start(*category_label, false, false, 0);
+            line2_box->pack_start(*alarm_icon, false, false, 0);
+            line2_box->pack_start(*remind_label, false, false, 0);
+
+            card_box->pack_start(*line1_box, false, false, 0);
+            card_box->pack_start(*line2_box, false, false, 0);
+
+            event_box->add(*card_box);
+            row->add(*event_box);
             row->set_data("task_id", new long long(task.id));
+
+            event_box->signal_button_press_event().connect([this, task_id = task.id](GdkEventButton *event)
+                                                           {
+                if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY) {
+                    if (m_task_context_menu) {
+                        m_context_menu_task_id = task_id;
+                        m_context_menu_date = 0;
+                        m_task_context_menu->popup_at_pointer((GdkEvent*)event);
+                    }
+                    return true;
+                }
+                return false; });
+
             current_list_box->add(*row);
         }
     }
@@ -1028,31 +1043,25 @@ void SchedulerApp::update_selected_day_details()
 
 void SchedulerApp::update_date_label_and_indicator()
 {
-    if (!m_current_date_label || !m_week_of_year_label || !m_today_indicator_box)
+    if (!m_current_date_label || !m_week_of_year_label || !m_today_button)
         return;
 
-    tm displayed_tm = *localtime(&m_displayed_date);
     char buffer[80];
-    if (m_current_view_mode == ViewMode::MONTH)
+    // **解决Bug 2**: 周视图标题逻辑
+    if (m_current_view_mode == ViewMode::WEEK)
     {
-        strftime(buffer, sizeof(buffer), "%Y年%m月", &displayed_tm);
+        // 周视图下，标题显示当前选中日期的“xxxx年xx月”
+        tm selected_date_tm = *localtime(&m_selected_date);
+        strftime(buffer, sizeof(buffer), "%Y年%m月", &selected_date_tm);
     }
     else
-    { // 周视图
-        tm end_of_week_tm = displayed_tm;
-        end_of_week_tm.tm_mday += 6;
-        mktime(&end_of_week_tm);
-        if (displayed_tm.tm_mon != end_of_week_tm.tm_mon)
-        {
-            strftime(buffer, sizeof(buffer), "%Y年%m月%d日", &displayed_tm);
-        }
-        else
-        {
-            strftime(buffer, sizeof(buffer), "%Y年%m月", &displayed_tm);
-        }
+    { // 月视图或其他视图
+        tm displayed_tm = *localtime(&m_displayed_date);
+        strftime(buffer, sizeof(buffer), "%Y年%m月", &displayed_tm);
     }
     m_current_date_label->set_text(buffer);
 
+    // 更新底部栏的"今"按钮状态和周数
     time_t today_t;
     time(&today_t);
     tm today_tm = *localtime(&today_t);
@@ -1067,7 +1076,7 @@ void SchedulerApp::update_date_label_and_indicator()
         m_today_button->get_style_context()->remove_class("view-button-active");
     }
 
-    char week_buf[10];
+    char week_buf[20];
     strftime(week_buf, sizeof(week_buf), "第%V周", &selected_tm);
     m_week_of_year_label->set_text(week_buf);
 }

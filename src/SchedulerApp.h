@@ -74,10 +74,9 @@ public:
 
     // 主界面控件 (根据新的XML结构更新)
     Gtk::Paned* m_month_view_pane = nullptr;
-    Gtk::Paned* m_week_view_pane = nullptr;
     Gtk::Stack* m_main_stack = nullptr;
     Gtk::Grid *m_month_header_grid = nullptr, *m_month_view_grid = nullptr;
-    Gtk::Grid *m_week_header_grid = nullptr, *m_week_view_grid = nullptr;
+    Gtk::Grid *m_week_header_grid = nullptr;
     Gtk::Box* m_date_navigation_box = nullptr;
     Gtk::Label* m_current_date_label = nullptr;
     Gtk::Button *m_prev_button = nullptr, *m_next_button = nullptr;
@@ -87,7 +86,10 @@ public:
     Gtk::Button* m_today_button = nullptr;
     Gtk::Label* m_week_of_year_label = nullptr;
     Gtk::ListBox* m_selected_day_events_listbox = nullptr;
-    Gtk::ListBox* m_week_selected_day_events_listbox = nullptr; // <--- 添加这个声明
+    Gtk::ListBox* m_week_selected_day_events_listbox = nullptr;
+    Gtk::RadioButton* m_week_day_buttons[7] = {nullptr};
+    Gtk::Label* m_week_day_labels[7] = {nullptr};
+    sigc::connection m_week_day_signal_connections[7];
 
     // 右键上下文菜单
     Gtk::Menu *m_task_context_menu = nullptr, *m_empty_space_context_menu = nullptr;
@@ -161,8 +163,6 @@ public:
     bool on_day_cell_button_press(GdkEventButton* event, time_t date);
     bool on_task_label_button_press(GdkEventButton* event, long long task_id, time_t date);
     bool on_tree_view_button_press(GdkEventButton* event);
-    // ** THE FIX IS HERE **
-    // The correct parameter order is (GdkEventButton*, Gtk::ListBox*)
     bool on_list_box_button_press(GdkEventButton* event, Gtk::ListBox* listbox);
     void on_ctx_menu_add_task_activated();
     void on_ctx_menu_delete_task_activated();
