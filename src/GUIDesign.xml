@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkDialog" id="add_task_dialog">
@@ -53,7 +52,6 @@
           </packing>
         </child>
         <child>
-          <!-- n-columns=3 n-rows=8 -->
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -284,33 +282,6 @@
                 <property name="top-attach">7</property>
               </packing>
             </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -330,7 +301,6 @@
     <property name="window-position">center</property>
     <property name="destroy-with-parent">True</property>
     <child>
-      <!-- n-columns=3 n-rows=5 -->
       <object class="GtkGrid">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
@@ -448,21 +418,6 @@
             <property name="top-attach">4</property>
             <property name="width">2</property>
           </packing>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-        <child>
-          <placeholder/>
         </child>
       </object>
     </child>
@@ -700,7 +655,6 @@
         <property name="orientation">vertical</property>
         <property name="spacing">5</property>
         <child>
-          <!-- 顶部: 搜索(占位), 标题, 设置 -->
           <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -775,7 +729,6 @@
           </packing>
         </child>
         <child>
-          <!-- 日期导航 -->
           <object class="GtkBox" id="date_navigation_box">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -844,7 +797,6 @@
           </packing>
         </child>
         <child>
-          <!-- 视图切换器 -->
           <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -899,7 +851,6 @@
           </packing>
         </child>
         <child>
-          <!-- 核心视图区 -->
           <object class="GtkStack" id="main_stack">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -909,7 +860,6 @@
             <property name="vexpand">True</property>
             <property name="transition-type">slide-left-right</property>
             <child>
-              <!-- 月视图 Pane -->
               <object class="GtkPaned" id="month_view_pane">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -977,7 +927,6 @@
               </packing>
             </child>
             <child>
-              <!-- 周视图 Pane -->
               <object class="GtkPaned" id="week_view_pane">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -1045,7 +994,6 @@
               </packing>
             </child>
             <child>
-              <!-- 日程列表视图 -->
               <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
@@ -1129,7 +1077,6 @@
           </packing>
         </child>
         <child>
-          <!-- 今天指示器 -->
           <object class="GtkBox" id="today_indicator_box">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
