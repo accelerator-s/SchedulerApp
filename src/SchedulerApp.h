@@ -4,14 +4,17 @@
 #include "UserManager.h"
 #include "TaskManager.h"
 #include <ctime>
+#include <set>    // 新增
+#include <vector> // 新增
 
-class SchedulerApp : public Gtk::Application {
+class SchedulerApp : public Gtk::Application
+{
 public:
     // 构造函数
     SchedulerApp();
 
     // 提醒回调函数，在后台线程触发提醒时被调用
-    void on_reminder(const std::string& title, const std::string& msg);
+    void on_reminder(const std::string &title, const std::string &msg);
     // 登录成功后调用的函数，用于启动后台服务
     void on_login_success();
 
@@ -20,17 +23,22 @@ public:
 
     // Gtk::Application 的虚函数，在应用激活时调用
     void on_activate() override;
-    
+
     // 枚举，定义了三种视图模式
-    enum class ViewMode { MONTH, WEEK, AGENDA };
+    enum class ViewMode
+    {
+        MONTH,
+        WEEK,
+        AGENDA
+    };
 
     // 定义 TreeView 的数据列模型
     class ModelColumns : public Gtk::TreeModel::ColumnRecord
     {
     public:
         ModelColumns()
-        { 
-            add(m_col_id); 
+        {
+            add(m_col_id);
             add(m_col_name);
             add(m_col_timespan);
             add(m_col_priority);
@@ -58,55 +66,55 @@ public:
     Gtk::Dialog *add_task_dialog = nullptr;
     Gtk::Entry *login_username_entry = nullptr, *login_password_entry = nullptr;
     Gtk::Entry *register_username_entry = nullptr, *register_password_entry = nullptr, *register_confirm_password_entry = nullptr;
-    
+
     Gtk::Entry *cp_username_entry = nullptr, *cp_old_password_entry = nullptr, *cp_new_password_entry = nullptr, *cp_confirm_new_password_entry = nullptr;
     Gtk::Label *cp_old_password_label = nullptr;
 
-    Gtk::TreeView* task_tree_view = nullptr;
+    Gtk::TreeView *task_tree_view = nullptr;
     Glib::RefPtr<Gtk::ListStore> m_refTreeModel;
-    
+
     // "设置" 菜单相关控件
-    Gtk::MenuButton* settings_button = nullptr;
-    Gtk::MenuItem* menu_item_logout = nullptr;
-    Gtk::MenuItem* menu_item_change_password = nullptr;
-    Gtk::MenuItem* menu_item_delete_account = nullptr;
-    Gtk::MenuItem* menu_item_help = nullptr;
+    Gtk::MenuButton *settings_button = nullptr;
+    Gtk::MenuItem *menu_item_logout = nullptr;
+    Gtk::MenuItem *menu_item_change_password = nullptr;
+    Gtk::MenuItem *menu_item_delete_account = nullptr;
+    Gtk::MenuItem *menu_item_help = nullptr;
 
     // 主界面控件 (根据新的XML结构更新)
-    Gtk::Paned* m_month_view_pane = nullptr;
-    Gtk::Stack* m_main_stack = nullptr;
+    Gtk::Paned *m_month_view_pane = nullptr;
+    Gtk::Stack *m_main_stack = nullptr;
     Gtk::Grid *m_month_header_grid = nullptr, *m_month_view_grid = nullptr;
     Gtk::Grid *m_week_header_grid = nullptr;
-    Gtk::Box* m_date_navigation_box = nullptr;
-    Gtk::Label* m_current_date_label = nullptr;
+    Gtk::Box *m_date_navigation_box = nullptr;
+    Gtk::Label *m_current_date_label = nullptr;
     Gtk::Button *m_prev_button = nullptr, *m_next_button = nullptr;
     Gtk::Button *m_month_view_button = nullptr, *m_week_view_button = nullptr, *m_agenda_view_button = nullptr;
     Gtk::Button *m_agenda_add_task_button = nullptr, *m_agenda_delete_task_button = nullptr;
-    Gtk::Box* m_today_indicator_box = nullptr;
-    Gtk::Button* m_today_button = nullptr;
-    Gtk::Label* m_week_of_year_label = nullptr;
-    Gtk::ListBox* m_selected_day_events_listbox = nullptr;
-    Gtk::ListBox* m_week_selected_day_events_listbox = nullptr;
-    Gtk::RadioButton* m_week_day_buttons[7] = {nullptr};
-    Gtk::Label* m_week_day_labels[7] = {nullptr};
+    Gtk::Box *m_today_indicator_box = nullptr;
+    Gtk::Button *m_today_button = nullptr;
+    Gtk::Label *m_week_of_year_label = nullptr;
+    Gtk::ListBox *m_selected_day_events_listbox = nullptr;
+    Gtk::ListBox *m_week_selected_day_events_listbox = nullptr;
+    Gtk::RadioButton *m_week_day_buttons[7] = {nullptr};
+    Gtk::Label *m_week_day_labels[7] = {nullptr};
     sigc::connection m_week_day_signal_connections[7];
 
     // 右键上下文菜单
     Gtk::Menu *m_task_context_menu = nullptr, *m_empty_space_context_menu = nullptr;
     Gtk::MenuItem *m_ctx_menu_delete_task = nullptr, *m_ctx_menu_add_task = nullptr;
     long long m_context_menu_task_id = -1; // 用于存储右键点击的任务ID
-    time_t m_context_menu_date = 0; // 用于存储右键点击的日期，以便在添加任务时预填
+    time_t m_context_menu_date = 0;        // 用于存储右键点击的日期，以便在添加任务时预填
 
     // "添加任务" 对话框的控件
-    Gtk::Entry* task_name_entry = nullptr;
-    Gtk::Button* task_start_time_button = nullptr;
-    Gtk::SpinButton* task_duration_spin = nullptr;
-    Gtk::Label* task_end_time_label = nullptr;
-    Gtk::ComboBoxText* task_priority_combo = nullptr;
-    Gtk::ComboBoxText* task_category_combo = nullptr;
-    Gtk::Entry* task_custom_category_entry = nullptr;
-    Gtk::ComboBoxText* task_reminder_combo = nullptr;
-    Gtk::Entry* task_reminder_entry = nullptr;
+    Gtk::Entry *task_name_entry = nullptr;
+    Gtk::Button *task_start_time_button = nullptr;
+    Gtk::SpinButton *task_duration_spin = nullptr;
+    Gtk::Label *task_end_time_label = nullptr;
+    Gtk::ComboBoxText *task_priority_combo = nullptr;
+    Gtk::ComboBoxText *task_category_combo = nullptr;
+    Gtk::Entry *task_custom_category_entry = nullptr;
+    Gtk::ComboBoxText *task_reminder_combo = nullptr;
+    Gtk::Entry *task_reminder_entry = nullptr;
     time_t m_selected_start_time = 0; // "添加任务"对话框中选择的开始时间
 
     // 业务逻辑处理器和状态
@@ -119,13 +127,17 @@ public:
     time_t m_selected_date;
 
     // 用于管理定时器
-    sigc::connection m_timer_connection; 
+    sigc::connection m_timer_connection;
+
+private: // 新增私有成员和方法
+    std::set<time_t> m_days_with_tasks; // 新增：缓存有任务的日期
+    void update_days_with_tasks_cache();  // 新增：更新缓存的方法
 
     // UI初始化和管理
     void get_widgets();
     void connect_signals();
-    void show_message(const std::string& title, const std::string& msg);
-    
+    void show_message(const std::string &title, const std::string &msg);
+
     // UI更新和辅助函数
     void update_all_views();
     void update_view_specific_layout();
@@ -138,10 +150,10 @@ public:
     void update_end_time_label();
     void reset_add_task_dialog();
     std::string priority_to_string(Priority p);
-    std::string category_to_string(const Task& task);
-    bool get_time_from_user(tm& time_struct, Gtk::Window& parent);
-    std::string get_task_status(const Task& task, time_t current_time);
-    std::string get_reminder_status(const Task& task);
+    std::string category_to_string(const Task &task);
+    bool get_time_from_user(tm &time_struct, Gtk::Window &parent);
+    std::string get_task_status(const Task &task, time_t current_time);
+    std::string get_reminder_status(const Task &task);
     std::string format_timespan(time_t start_time, time_t end_time);
 
     // 信号处理函数
@@ -150,7 +162,7 @@ public:
     void on_register_button_clicked();
     void on_show_change_password_button_clicked();
     void on_cp_confirm_button_clicked();
-    
+
     // 主界面信号处理函数
     void on_prev_button_clicked();
     void on_next_button_clicked();
@@ -160,10 +172,10 @@ public:
     void on_agenda_delete_task_button_clicked();
 
     // 上下文菜单相关事件处理
-    bool on_day_cell_button_press(GdkEventButton* event, time_t date);
-    bool on_task_label_button_press(GdkEventButton* event, long long task_id, time_t date);
-    bool on_tree_view_button_press(GdkEventButton* event);
-    bool on_list_box_button_press(GdkEventButton* event, Gtk::ListBox* listbox);
+    bool on_day_cell_button_press(GdkEventButton *event, time_t date);
+    bool on_task_label_button_press(GdkEventButton *event, long long task_id, time_t date);
+    bool on_tree_view_button_press(GdkEventButton *event);
+    bool on_list_box_button_press(GdkEventButton *event, Gtk::ListBox *listbox);
     void on_ctx_menu_add_task_activated();
     void on_ctx_menu_delete_task_activated();
 
@@ -172,7 +184,7 @@ public:
     void on_menu_item_change_password_activated();
     void on_menu_item_delete_account_activated();
     void on_menu_item_help_activated();
-    
+
     // "添加任务" 对话框的信号处理
     void on_add_task_ok_button_clicked();
     void on_add_task_cancel_button_clicked();
@@ -181,6 +193,7 @@ public:
     void on_task_category_combo_changed();
 
     // 提醒时间输入框的焦点事件处理
-    bool on_reminder_entry_focus_in(GdkEventFocus* event);
-    bool on_reminder_entry_focus_out(GdkEventFocus* event);
+    bool on_reminder_entry_focus_in(GdkEventFocus *event);
+    bool on_reminder_entry_focus_out(GdkEventFocus *event);
+    bool day_has_tasks(time_t day_time, const std::vector<Task>& all_tasks);
 };
