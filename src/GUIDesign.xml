@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkDialog" id="add_task_dialog">
@@ -52,6 +53,7 @@
           </packing>
         </child>
         <child>
+          <!-- n-columns=3 n-rows=8 -->
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -282,6 +284,33 @@
                 <property name="top-attach">7</property>
               </packing>
             </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -301,6 +330,7 @@
     <property name="window-position">center</property>
     <property name="destroy-with-parent">True</property>
     <child>
+      <!-- n-columns=3 n-rows=5 -->
       <object class="GtkGrid">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
@@ -419,22 +449,48 @@
             <property name="width">2</property>
           </packing>
         </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <placeholder/>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMenu" id="empty_space_context_menu">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="ctx_menu_add_task">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">添加任务</property>
       </object>
     </child>
   </object>
   <object class="GtkTextBuffer" id="help_text_buffer">
     <property name="text" translatable="yes">软件功能简介：
-1. 账户管理：支持用户注册和登录。密码使用MD5加密存储，保证安全。
+1. 账户管理：支持用户注册、登录和修改密码。密码使用MD5加密存储，保证安全。
 2. 任务管理：
-   - 添加任务：点击主界面的“添加任务”按钮，填写任务详情。
-   - 删除任务：在主界面选中一个任务，点击“删除任务”按钮。
-   - 任务显示：所有任务在主界面按开始时间排序显示。
+   - 添加任务：点击主界面的“添加任务”按钮，或者在主界面空白处单击右键选择弹出菜单的“添加任务”，填写任务详情。
+   - 删除任务：在主界面选中一个任务，点击“删除任务”按钮或者单击右键选择弹出菜单的“删除任务”。
+   - 任务显示：支持月视图、周视图和所有日程显示。
 3. 数据持久化：所有任务和用户信息都保存在本地文件中。
-4. 后台提醒：程序启动后，后台线程会周期性检查任务，并在到达提醒时间时在启动程序的终端上打印提醒信息。</property>
+4. 后台提醒：程序启动后，后台线程会周期性检查任务，并在到达提醒时间时弹出提醒窗口。</property>
   </object>
   <object class="GtkWindow" id="help_window">
-    <property name="width-request">500</property>
-    <property name="height-request">400</property>
+    <property name="width-request">850</property>
+    <property name="height-request">340</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">日 程 管 理 系 统 - 帮 助</property>
     <property name="modal">True</property>
@@ -475,6 +531,8 @@
         <child>
           <object class="GtkButton" id="help_close_button">
             <property name="label" translatable="yes">关闭</property>
+            <property name="width-request">100</property>
+            <property name="height-request">27</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="receives-default">True</property>
@@ -642,10 +700,9 @@
       </object>
     </child>
   </object>
-      
   <object class="GtkApplicationWindow" id="main_window">
     <property name="can-focus">False</property>
-    <property name="title" translatable="yes">我的日历</property>
+    <property name="title" translatable="yes">我 的 日 历</property>
     <property name="window-position">center</property>
     <property name="default-width">900</property>
     <property name="default-height">750</property>
@@ -656,7 +713,6 @@
         <property name="orientation">vertical</property>
         <property name="spacing">5</property>
         <child>
-          <!-- 日期导航 -->
           <object class="GtkBox" id="date_navigation_box">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -666,7 +722,7 @@
               <object class="GtkLabel" id="current_date_label">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">2025年7月</property>
+                <property name="label" translatable="yes">2025 年 7 月</property>
                 <attributes>
                   <attribute name="weight" value="bold"/>
                 </attributes>
@@ -725,7 +781,6 @@
           </packing>
         </child>
         <child>
-          <!-- 视图切换器 -->
           <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -780,7 +835,6 @@
           </packing>
         </child>
         <child>
-          <!-- 核心视图区 -->
           <object class="GtkStack" id="main_stack">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -790,7 +844,6 @@
             <property name="vexpand">True</property>
             <property name="transition-type">slide-left-right</property>
             <child>
-              <!-- 月视图 Pane -->
               <object class="GtkPaned" id="month_view_pane">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -802,10 +855,38 @@
                     <property name="can-focus">False</property>
                     <property name="orientation">vertical</property>
                     <child>
+                      <!-- n-columns=3 n-rows=3 -->
                       <object class="GtkGrid" id="month_header_grid">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="column-homogeneous">True</property>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -814,6 +895,7 @@
                       </packing>
                     </child>
                     <child>
+                      <!-- n-columns=3 n-rows=3 -->
                       <object class="GtkGrid" id="month_view_grid">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
@@ -821,6 +903,33 @@
                         <property name="vexpand">True</property>
                         <property name="row-homogeneous">True</property>
                         <property name="column-homogeneous">True</property>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -840,9 +949,15 @@
                     <property name="can-focus">True</property>
                     <property name="shadow-type">in</property>
                     <child>
-                      <object class="GtkListBox" id="selected_day_events_listbox">
+                      <object class="GtkViewport">
                         <property name="visible">True</property>
-                        <property name="can-focus">True</property>
+                        <property name="can-focus">False</property>
+                        <child>
+                          <object class="GtkListBox" id="selected_day_events_listbox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>
@@ -858,19 +973,18 @@
               </packing>
             </child>
             <child>
-              <!-- 新的周视图 Box (垂直布局) -->
               <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">10</property>
                 <child>
-                  <!-- 顶部日期选择条 (声明式定义) -->
+                  <!-- n-columns=7 n-rows=3 -->
                   <object class="GtkGrid" id="week_header_grid">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="column-homogeneous">True</property>
                     <property name="margin-top">5</property>
+                    <property name="column-homogeneous">True</property>
                     <child>
                       <object class="GtkRadioButton" id="week_day_button_0">
                         <property name="visible">True</property>
@@ -882,9 +996,9 @@
                           <object class="GtkLabel" id="week_day_label_0">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="justify">center</property>
                             <property name="label" translatable="yes">日
 00</property>
+                            <property name="justify">center</property>
                           </object>
                         </child>
                       </object>
@@ -905,9 +1019,9 @@
                           <object class="GtkLabel" id="week_day_label_1">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="justify">center</property>
                             <property name="label" translatable="yes">一
 00</property>
+                            <property name="justify">center</property>
                           </object>
                         </child>
                       </object>
@@ -928,9 +1042,9 @@
                           <object class="GtkLabel" id="week_day_label_2">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="justify">center</property>
                             <property name="label" translatable="yes">二
 00</property>
+                            <property name="justify">center</property>
                           </object>
                         </child>
                       </object>
@@ -951,9 +1065,9 @@
                           <object class="GtkLabel" id="week_day_label_3">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="justify">center</property>
                             <property name="label" translatable="yes">三
 00</property>
+                            <property name="justify">center</property>
                           </object>
                         </child>
                       </object>
@@ -974,9 +1088,9 @@
                           <object class="GtkLabel" id="week_day_label_4">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="justify">center</property>
                             <property name="label" translatable="yes">四
 00</property>
+                            <property name="justify">center</property>
                           </object>
                         </child>
                       </object>
@@ -997,9 +1111,9 @@
                           <object class="GtkLabel" id="week_day_label_5">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="justify">center</property>
                             <property name="label" translatable="yes">五
 00</property>
+                            <property name="justify">center</property>
                           </object>
                         </child>
                       </object>
@@ -1020,9 +1134,9 @@
                           <object class="GtkLabel" id="week_day_label_6">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="justify">center</property>
                             <property name="label" translatable="yes">六
 00</property>
+                            <property name="justify">center</property>
                           </object>
                         </child>
                       </object>
@@ -1030,6 +1144,48 @@
                         <property name="left-attach">6</property>
                         <property name="top-attach">0</property>
                       </packing>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
                     </child>
                   </object>
                   <packing>
@@ -1039,17 +1195,21 @@
                   </packing>
                 </child>
                 <child>
-                  <!-- 选定日期的事件列表 -->
                   <object class="GtkScrolledWindow" id="week_details_scrolled_window">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
-                    <property name="shadow-type">in</property>
                     <property name="hscrollbar-policy">never</property>
+                    <property name="shadow-type">in</property>
                     <child>
-                      <object class="GtkListBox" id="week_selected_day_events_listbox">
+                      <object class="GtkViewport">
                         <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="selection-mode">none</property>
+                        <property name="can-focus">False</property>
+                        <child>
+                          <object class="GtkListBox" id="week_selected_day_events_listbox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>
@@ -1067,7 +1227,6 @@
               </packing>
             </child>
             <child>
-              <!-- 日程列表视图 -->
               <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
@@ -1118,8 +1277,8 @@
                   <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
-                    <property name="shadow-type">in</property>
                     <property name="vexpand">True</property>
+                    <property name="shadow-type">in</property>
                     <child>
                       <object class="GtkTreeView" id="task_tree_view">
                         <property name="visible">True</property>
@@ -1151,7 +1310,6 @@
           </packing>
         </child>
         <child>
-          <!-- 底部栏: 今天指示器, 搜索, 设置 -->
           <object class="GtkBox" id="today_indicator_box">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -1176,7 +1334,7 @@
               <object class="GtkLabel" id="week_of_year_label">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">第28周</property>
+                <property name="label" translatable="yes">第 28 周</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -1185,36 +1343,24 @@
               </packing>
             </child>
             <child>
-              <!-- Spacer to push next items to the right -->
               <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="hexpand">True</property>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
               </object>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="position">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="search_button">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="relief">none</property>
-                <child>
-                  <object class="GtkImage">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="icon-name">edit-find-symbolic</property>
-                  </object>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">3</property>
               </packing>
             </child>
             <child>
@@ -1245,28 +1391,6 @@
             <property name="position">3</property>
           </packing>
         </child>
-      </object>
-    </child>
-  </object>
-  <object class="GtkMenu" id="task_context_menu">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <child>
-      <object class="GtkMenuItem" id="ctx_menu_delete_task">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="label" translatable="yes">删除任务</property>
-      </object>
-    </child>
-  </object>
-  <object class="GtkMenu" id="empty_space_context_menu">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <child>
-      <object class="GtkMenuItem" id="ctx_menu_add_task">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="label" translatable="yes">添加任务</property>
       </object>
     </child>
   </object>
@@ -1378,6 +1502,17 @@
             <property name="y">140</property>
           </packing>
         </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMenu" id="task_context_menu">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="ctx_menu_delete_task">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">删除任务</property>
       </object>
     </child>
   </object>

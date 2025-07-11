@@ -120,7 +120,7 @@ string SchedulerApp::get_reminder_status(const Task &task)
 }
 
 // 新增辅助函数：检查指定日期是否有任务
-bool SchedulerApp::day_has_tasks(time_t day_time, const std::vector<Task>& all_tasks)
+bool SchedulerApp::day_has_tasks(time_t day_time, const std::vector<Task> &all_tasks)
 {
     tm start_of_day_tm = *localtime(&day_time);
     start_of_day_tm.tm_hour = 0;
@@ -129,7 +129,7 @@ bool SchedulerApp::day_has_tasks(time_t day_time, const std::vector<Task>& all_t
     time_t start_of_day = mktime(&start_of_day_tm);
     time_t end_of_day = start_of_day + 86400; // 第二天零点
 
-    for (const auto& task : all_tasks)
+    for (const auto &task : all_tasks)
     {
         if (task.startTime >= start_of_day && task.startTime < end_of_day)
         {
@@ -144,6 +144,7 @@ SchedulerApp::SchedulerApp() : Gtk::Application("org.cpp.scheduler.app")
 {
     time(&m_displayed_date);
     time(&m_selected_date);
+    m_current_view_mode = ViewMode::WEEK; // 初始化为周视图
 }
 
 // 静态工厂方法，创建应用实例
@@ -164,7 +165,7 @@ void SchedulerApp::on_activate()
         auto css_provider = Gtk::CssProvider::create();
         css_provider->load_from_data(
             ".today-cell { background-color: alpha(@theme_selected_bg_color, 0.3); border-radius: 5px;}"
-            ".other-month-day { color: @theme_unfocused_fg_color; }"
+            ".other-month-day { color: alpha(@theme_unfocused_fg_color, 0.4);  }"
             ".selected-day-cell { border: 2px solid @theme_accent_bg_color; border-radius: 5px; }"
             ".view-button-active { border-bottom-width: 3px; border-bottom-style: solid; border-bottom-color: @theme_accent_bg_color; font-weight: bold; }"
             ".task-label { font-size: small; background-color: alpha(@theme_button_bg_color, 0.7); color: @theme_button_fg_color; border-radius: 10px; padding: 2px 6px; margin-top: 2px; margin-bottom: 2px;}"
@@ -173,8 +174,7 @@ void SchedulerApp::on_activate()
             ".category-tag { background-color: @theme_accent_bg_color; color: @theme_accent_fg_color; border-radius: 10px; padding: 3px 10px; font-size: small; }"
             ".location-label { color: @theme_unfocused_fg_color; font-size: small; }"
             // 为任务小点新增的CSS样式
-            ".task-indicator { color: @theme_accent_bg_color; font-weight: bold; font-size: large; }" 
-        );
+            ".task-indicator { color: @theme_accent_bg_color; font-weight: bold; font-size: large; }");
         Gtk::StyleContext::add_provider_for_screen(
             Gdk::Screen::get_default(), css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
@@ -186,13 +186,18 @@ void SchedulerApp::on_activate()
 
         connect_signals();
 
-        if (login_window) add_window(*login_window);
-        if (main_window) add_window(*main_window);
-        if (register_window) add_window(*register_window);
-        if (change_password_window) add_window(*change_password_window);
-        if (help_window) add_window(*help_window);
-        if (add_task_dialog) add_window(*add_task_dialog);
-
+        if (login_window)
+            add_window(*login_window);
+        if (main_window)
+            add_window(*main_window);
+        if (register_window)
+            add_window(*register_window);
+        if (change_password_window)
+            add_window(*change_password_window);
+        if (help_window)
+            add_window(*help_window);
+        if (add_task_dialog)
+            add_window(*add_task_dialog);
         if (login_window)
             login_window->show();
     }
@@ -220,7 +225,6 @@ void SchedulerApp::update_days_with_tasks_cache()
         m_days_with_tasks.insert(mktime(&task_day_tm));
     }
 }
-
 
 // 从 Builder 中获取所有控件指针
 void SchedulerApp::get_widgets()
@@ -333,7 +337,9 @@ void SchedulerApp::connect_signals()
     if (change_password_window)
         change_password_window->signal_delete_event().connect([this](GdkEventAny *)
                                                               { if(change_password_window) change_password_window->hide(); return true; });
-
+    Gtk::Button *help_close_button = nullptr;
+    m_builder->get_widget("help_close_button", help_close_button);
+    help_close_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_help_close_button_clicked));
     // --- "设置"菜单信号 ---
     if (menu_item_logout)
         menu_item_logout->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_logout_activated));
@@ -427,7 +433,6 @@ void SchedulerApp::connect_signals()
     {
         if (m_week_day_buttons[i])
         {
-            // Capture and store the sigc::connection object
             m_week_day_signal_connections[i] = m_week_day_buttons[i]->signal_toggled().connect([this, i]()
                                                                                                {
                 if (m_week_day_buttons[i]->get_active()) {
@@ -441,6 +446,11 @@ void SchedulerApp::connect_signals()
                 } });
         }
     }
+}
+
+void SchedulerApp::on_help_close_button_clicked()
+{
+    help_window->hide();
 }
 
 // “登录”按钮点击事件处理
@@ -465,14 +475,11 @@ void SchedulerApp::on_login_button_clicked()
         if (login_window)
             login_window->hide();
         if (main_window)
-        {
-            main_window->maximize(); // 需求1：主窗口全屏（最大化）
             main_window->show();
-        }
 
         time(&m_displayed_date);
         time(&m_selected_date);
-        m_current_view_mode = ViewMode::MONTH;
+        m_current_view_mode = ViewMode::WEEK;
         update_all_views();
         on_login_success();
         break;
@@ -855,8 +862,6 @@ void SchedulerApp::update_view_specific_layout()
     // 日期导航栏（上/下一月）仅在月/周视图显示，因为它与日程列表无关
     m_date_navigation_box->set_visible(!is_agenda);
 
-    // 我们不再根据视图模式隐藏底部栏的任何部分。
-
     // Paned 控件的位置调整
     if (m_current_view_mode == ViewMode::MONTH)
     {
@@ -867,20 +872,25 @@ void SchedulerApp::update_view_specific_layout()
 // 填充月视图
 void SchedulerApp::populate_month_view()
 {
-    if (!m_month_view_grid || !m_month_header_grid) return;
+    if (!m_month_view_grid || !m_month_header_grid)
+        return;
 
-    for (auto *child : m_month_view_grid->get_children()) m_month_view_grid->remove(*child);
-    for (auto *child : m_month_header_grid->get_children()) m_month_header_grid->remove(*child);
+    for (auto *child : m_month_view_grid->get_children())
+        m_month_view_grid->remove(*child);
+    for (auto *child : m_month_header_grid->get_children())
+        m_month_header_grid->remove(*child);
 
     const char *days_of_week[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 7; ++i)
+    {
         auto label = Gtk::make_managed<Gtk::Label>(days_of_week[i]);
         label->get_style_context()->add_class("dim-label");
         m_month_header_grid->attach(*label, i, 0);
     }
 
     tm displayed_tm = *localtime(&m_displayed_date);
-    time_t today_t; time(&today_t);
+    time_t today_t;
+    time(&today_t);
     tm today_tm = *localtime(&today_t);
     tm selected_tm = *localtime(&m_selected_date);
 
@@ -892,13 +902,17 @@ void SchedulerApp::populate_month_view()
     current_day_tm.tm_mday -= month_start_wday;
     mktime(&current_day_tm);
 
-    for (int row = 0; row < 6; ++row) {
-        for (int col = 0; col < 7; ++col) {
+    for (int row = 0; row < 6; ++row)
+    {
+        for (int col = 0; col < 7; ++col)
+        {
             time_t current_cell_date_t = mktime(&current_day_tm);
 
             // 规范化日期以便在set中检查
             tm temp_tm = current_day_tm;
-            temp_tm.tm_hour = 0; temp_tm.tm_min = 0; temp_tm.tm_sec = 0;
+            temp_tm.tm_hour = 0;
+            temp_tm.tm_min = 0;
+            temp_tm.tm_sec = 0;
             time_t normalized_cell_date = mktime(&temp_tm);
             bool has_task = m_days_with_tasks.count(normalized_cell_date) > 0;
 
@@ -910,7 +924,8 @@ void SchedulerApp::populate_month_view()
             overlay->add(*day_label); // 添加主控件（日期数字）
 
             // 如果当天有任务并且是当前月份，则添加小点
-            if (has_task && current_day_tm.tm_mon == displayed_tm.tm_mon) {
+            if (has_task && current_day_tm.tm_mon == displayed_tm.tm_mon)
+            {
                 auto indicator_dot = Gtk::make_managed<Gtk::Label>("•");
                 indicator_dot->get_style_context()->add_class("task-indicator");
                 indicator_dot->set_halign(Gtk::ALIGN_END);
@@ -945,7 +960,6 @@ void SchedulerApp::populate_month_view()
     m_month_header_grid->show_all();
 }
 
-
 // 填充周视图
 void SchedulerApp::populate_week_view()
 {
@@ -954,19 +968,23 @@ void SchedulerApp::populate_week_view()
     mktime(&iterator_tm);
     tm selected_tm = *localtime(&m_selected_date);
 
-    for (int col = 0; col < 7; ++col) {
+    for (int col = 0; col < 7; ++col)
+    {
         if (!m_week_day_buttons[col] || !m_week_day_labels[col])
             continue;
 
         // 规范化日期以便在set中检查
         tm temp_tm = iterator_tm;
-        temp_tm.tm_hour = 0; temp_tm.tm_min = 0; temp_tm.tm_sec = 0;
+        temp_tm.tm_hour = 0;
+        temp_tm.tm_min = 0;
+        temp_tm.tm_sec = 0;
         time_t normalized_cell_date = mktime(&temp_tm);
         bool has_task = m_days_with_tasks.count(normalized_cell_date) > 0;
 
         const char *days_of_week[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
         string day_name_str = days_of_week[col];
-        if (has_task) {
+        if (has_task)
+        {
             day_name_str += " •"; // 在星期后附加小点
         }
 
@@ -975,17 +993,22 @@ void SchedulerApp::populate_week_view()
         std::string label_text = day_name_str + "\n" + day_num_buf;
         m_week_day_labels[col]->set_text(label_text);
 
-        if (m_week_day_signal_connections[col].connected()) {
+        if (m_week_day_signal_connections[col].connected())
+        {
             m_week_day_signal_connections[col].block();
         }
 
-        if (iterator_tm.tm_yday == selected_tm.tm_yday && iterator_tm.tm_year == selected_tm.tm_year) {
+        if (iterator_tm.tm_yday == selected_tm.tm_yday && iterator_tm.tm_year == selected_tm.tm_year)
+        {
             m_week_day_buttons[col]->set_active(true);
-        } else {
+        }
+        else
+        {
             m_week_day_buttons[col]->set_active(false);
         }
 
-        if (m_week_day_signal_connections[col].connected()) {
+        if (m_week_day_signal_connections[col].connected())
+        {
             m_week_day_signal_connections[col].unblock();
         }
 
@@ -996,8 +1019,7 @@ void SchedulerApp::populate_week_view()
     update_selected_day_details();
 }
 
-
-// 更新选定日期的任务详情列表 (最终修正版)
+// 更新选定日期的任务详情列表
 void SchedulerApp::update_selected_day_details()
 {
     Gtk::ListBox *current_list_box = nullptr;
@@ -1018,7 +1040,6 @@ void SchedulerApp::update_selected_day_details()
         current_list_box->remove(*child);
     }
 
-    // **修正 Bug 3**: 严格根据 m_selected_date 计算当天的起止时间戳
     tm start_of_day_tm = *localtime(&m_selected_date);
     start_of_day_tm.tm_hour = 0;
     start_of_day_tm.tm_min = 0;
@@ -1093,20 +1114,25 @@ void SchedulerApp::update_date_label_and_indicator()
     if (!m_current_date_label || !m_week_of_year_label || !m_today_button)
         return;
 
-    char buffer[80];
-    // **解决Bug 2**: 周视图标题逻辑
+    char final_buffer[80];
+    char year_buf[5];
+    char month_buf[3];
     if (m_current_view_mode == ViewMode::WEEK)
     {
         // 周视图下，标题显示当前选中日期的“xxxx年xx月”
         tm selected_date_tm = *localtime(&m_selected_date);
-        strftime(buffer, sizeof(buffer), "%Y年%m月", &selected_date_tm);
+        strftime(year_buf, sizeof(year_buf), "%Y", &selected_date_tm);
+        strftime(month_buf, sizeof(month_buf), "%m", &selected_date_tm);
+        snprintf(final_buffer, sizeof(final_buffer), "%s\xc2\xa0年\xc2\xa0%s\xc2\xa0月", year_buf, month_buf);
     }
     else
     { // 月视图或其他视图
         tm displayed_tm = *localtime(&m_displayed_date);
-        strftime(buffer, sizeof(buffer), "%Y年%m月", &displayed_tm);
+        strftime(year_buf, sizeof(year_buf), "%Y", &displayed_tm);
+        strftime(month_buf, sizeof(month_buf), "%m", &displayed_tm);
+        snprintf(final_buffer, sizeof(final_buffer), "%s\xc2\xa0年\xc2\xa0%s\xc2\xa0月", year_buf, month_buf);
     }
-    m_current_date_label->set_text(buffer);
+    m_current_date_label->set_text(final_buffer);
 
     // 更新底部栏的"今"按钮状态和周数
     time_t today_t;
@@ -1123,8 +1149,9 @@ void SchedulerApp::update_date_label_and_indicator()
         m_today_button->get_style_context()->remove_class("view-button-active");
     }
 
-    char week_buf[20];
-    strftime(week_buf, sizeof(week_buf), "第%V周", &selected_tm);
+    char week_buf[20], num_buf[10];
+    strftime(num_buf, sizeof(week_buf), "%V", &selected_tm);
+    snprintf(week_buf, sizeof(week_buf), "第\xc2\xa0%s\xc2\xa0周", num_buf);
     m_week_of_year_label->set_text(week_buf);
 }
 
@@ -1213,8 +1240,6 @@ bool SchedulerApp::on_tree_view_button_press(GdkEventButton *event)
     return false;
 }
 
-// ** THE FIX IS HERE **
-// This function definition now matches the declaration in SchedulerApp.h
 bool SchedulerApp::on_list_box_button_press(GdkEventButton *event, Gtk::ListBox *listbox)
 {
     if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY)
@@ -1610,17 +1635,16 @@ void SchedulerApp::show_message(const string &title, const string &msg)
 void SchedulerApp::on_login_success()
 {
     update_days_with_tasks_cache(); // 更新缓存
-    m_task_manager.setReminderCallback([this](const std::string &title, const std::string &msg) { 
-        Glib::signal_idle().connect_once([this, title, msg]() { 
+    m_task_manager.setReminderCallback([this](const std::string &title, const std::string &msg)
+                                       { Glib::signal_idle().connect_once([this, title, msg]()
+                                                                          { 
             this->show_message(title, msg); 
-            this->update_all_views(); 
-        }); 
-    });
+            this->update_all_views(); }); });
     m_task_manager.startReminderThread();
-    m_timer_connection = Glib::signal_timeout().connect([this]() {
+    m_timer_connection = Glib::signal_timeout().connect([this]()
+                                                        {
         this->update_all_views();
-        return true; 
-    }, 60000);
+        return true; }, 60000);
 }
 
 void SchedulerApp::on_reminder(const std::string &title, const std::string &msg) { show_message(title, msg); }

@@ -17,6 +17,11 @@ public:
     void on_reminder(const std::string &title, const std::string &msg);
     // 登录成功后调用的函数，用于启动后台服务
     void on_login_success();
+    
+    // 窗口关闭事件处理函数
+    bool on_window_close(GdkEventAny* event);
+    // 清理资源的函数
+    void cleanup_resources();
 
     // 创建应用程序实例的静态工厂方法
     static Glib::RefPtr<SchedulerApp> create();
@@ -122,16 +127,16 @@ public:
     TaskManager m_task_manager;
     std::string m_current_user;
     bool m_is_changing_password_from_main = false;
-    ViewMode m_current_view_mode = ViewMode::MONTH;
+    ViewMode m_current_view_mode = ViewMode::WEEK;
     time_t m_displayed_date;
     time_t m_selected_date;
 
     // 用于管理定时器
     sigc::connection m_timer_connection;
 
-private: // 新增私有成员和方法
-    std::set<time_t> m_days_with_tasks; // 新增：缓存有任务的日期
-    void update_days_with_tasks_cache();  // 新增：更新缓存的方法
+private:                                 // 新增私有成员和方法
+    std::set<time_t> m_days_with_tasks;  // 新增：缓存有任务的日期
+    void update_days_with_tasks_cache(); // 新增：更新缓存的方法
 
     // UI初始化和管理
     void get_widgets();
@@ -156,7 +161,7 @@ private: // 新增私有成员和方法
     std::string get_reminder_status(const Task &task);
     std::string format_timespan(time_t start_time, time_t end_time);
 
-    // 信号处理函数
+    // 登录界面信号处理函数
     void on_login_button_clicked();
     void on_show_register_button_clicked();
     void on_register_button_clicked();
@@ -170,6 +175,9 @@ private: // 新增私有成员和方法
     void on_view_button_clicked(ViewMode new_mode);
     void on_agenda_add_task_button_clicked();
     void on_agenda_delete_task_button_clicked();
+
+    // 帮助界面信号处理函数
+    void on_help_close_button_clicked();
 
     // 上下文菜单相关事件处理
     bool on_day_cell_button_press(GdkEventButton *event, time_t date);
@@ -195,5 +203,5 @@ private: // 新增私有成员和方法
     // 提醒时间输入框的焦点事件处理
     bool on_reminder_entry_focus_in(GdkEventFocus *event);
     bool on_reminder_entry_focus_out(GdkEventFocus *event);
-    bool day_has_tasks(time_t day_time, const std::vector<Task>& all_tasks);
+    bool day_has_tasks(time_t day_time, const std::vector<Task> &all_tasks);
 };
