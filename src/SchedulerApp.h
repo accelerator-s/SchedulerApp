@@ -4,8 +4,8 @@
 #include "UserManager.h"
 #include "TaskManager.h"
 #include <ctime>
-#include <set>    // 新增
-#include <vector> // 新增
+#include <set>
+#include <vector>
 
 class SchedulerApp : public Gtk::Application
 {
@@ -17,11 +17,6 @@ public:
     void on_reminder(const std::string &title, const std::string &msg);
     // 登录成功后调用的函数，用于启动后台服务
     void on_login_success();
-    
-    // 窗口关闭事件处理函数
-    bool on_window_close(GdkEventAny* event);
-    // 清理资源的函数
-    void cleanup_resources();
 
     // 创建应用程序实例的静态工厂方法
     static Glib::RefPtr<SchedulerApp> create();
@@ -85,7 +80,7 @@ public:
     Gtk::MenuItem *menu_item_delete_account = nullptr;
     Gtk::MenuItem *menu_item_help = nullptr;
 
-    // 主界面控件 (根据新的XML结构更新)
+    // 主界面控件
     Gtk::Paned *m_month_view_pane = nullptr;
     Gtk::Stack *m_main_stack = nullptr;
     Gtk::Grid *m_month_header_grid = nullptr, *m_month_view_grid = nullptr;
