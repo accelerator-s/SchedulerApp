@@ -1086,8 +1086,13 @@ void SchedulerApp::update_selected_day_details()
             name_label->set_markup("<b>" + task.name + "</b>");
             name_label->set_hexpand(true);
             name_label->set_halign(Gtk::ALIGN_START);
+            string status = get_task_status(task, time(nullptr));
+            auto status_label = Gtk::make_managed<Gtk::Label>(status);
+            status_label->set_halign(Gtk::ALIGN_END);
+            status_label->set_margin_end(10);
             line1_box->pack_start(*time_label, false, false, 10);
-            line1_box->pack_start(*name_label);
+            line1_box->pack_start(*name_label, true, true);
+            line1_box->pack_start(*status_label, false, false);
 
             auto line2_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 10);
             auto category_label = Gtk::make_managed<Gtk::Label>(category_to_string(task));
