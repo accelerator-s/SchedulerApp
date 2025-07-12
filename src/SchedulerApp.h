@@ -6,6 +6,7 @@
 #include <ctime>
 #include <set>
 #include <vector>
+#include <libayatana-appindicator/app-indicator.h>
 
 class SchedulerApp : public Gtk::Application
 {
@@ -129,9 +130,12 @@ public:
     // 用于管理定时器
     sigc::connection m_timer_connection;
 
-private:                                 // 新增私有成员和方法
-    std::set<time_t> m_days_with_tasks;  // 新增：缓存有任务的日期
-    void update_days_with_tasks_cache(); // 新增：更新缓存的方法
+    // 实现系统托盘图标
+    void setup_tray_icon();
+
+private:
+    std::set<time_t> m_days_with_tasks;  // 缓存有任务的日期
+    void update_days_with_tasks_cache(); // 更新缓存的方法
 
     // UI初始化和管理
     void get_widgets();
@@ -170,8 +174,6 @@ private:                                 // 新增私有成员和方法
     void on_view_button_clicked(ViewMode new_mode);
     void on_agenda_add_task_button_clicked();
     void on_agenda_delete_task_button_clicked();
-    bool on_window_delete_event(GdkEventAny *);
-
     // 帮助界面信号处理函数
     void on_help_close_button_clicked();
 
@@ -200,4 +202,14 @@ private:                                 // 新增私有成员和方法
     bool on_reminder_entry_focus_in(GdkEventFocus *event);
     bool on_reminder_entry_focus_out(GdkEventFocus *event);
     bool day_has_tasks(time_t day_time, const std::vector<Task> &all_tasks);
+
+    // 托盘图标相关处理
+    AppIndicator *indicator_ = nullptr;
+    Gtk::Menu menu_;
+    Gtk::MenuItem item_show_{"显示面板"};
+    Gtk::MenuItem item_quit_{"退出"};
+    GtkMenu *tray_menu_ = nullptr;
+    void on_show_window();
+    void on_quit_app();
+    bool on_main_window_delete_event(GdkEventAny *);
 };

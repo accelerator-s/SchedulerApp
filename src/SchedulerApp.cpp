@@ -186,6 +186,9 @@ void SchedulerApp::on_activate()
 
         connect_signals();
 
+        // 初始化系统托盘图标
+        setup_tray_icon();
+
         if (login_window)
             add_window(*login_window);
         if (main_window)
@@ -337,7 +340,11 @@ void SchedulerApp::connect_signals()
     if (change_password_window)
         change_password_window->signal_delete_event().connect([this](GdkEventAny *)
                                                               { if(change_password_window) change_password_window->hide(); return true; });
-    main_window->signal_delete_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_window_delete_event));
+
+    // --- 主窗口关闭事件处理 ---
+    if (main_window)
+        main_window->signal_delete_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_main_window_delete_event));
+
     Gtk::Button *help_close_button = nullptr;
     m_builder->get_widget("help_close_button", help_close_button);
     help_close_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_help_close_button_clicked));
@@ -606,22 +613,71 @@ void SchedulerApp::on_register_button_clicked()
     }
 }
 
-// 实现窗口安全关闭
-bool SchedulerApp::on_window_delete_event(GdkEventAny *)
+void SchedulerApp::setup_tray_icon()
 {
-    if (!main_window)
-        return false;
-    Gtk::MessageDialog dialog(*main_window, "退出确认", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO, true);
-    dialog.set_secondary_text("您确定要退出应用程序吗？");
-    int response = dialog.run();
-    if (response == Gtk::RESPONSE_NO)
+    // 创建托盘图标
+    indicator_ = app_indicator_new(
+        "scheduler-app",
+        "indicator-messages", // 系统主题图标
+        APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
+
+    app_indicator_set_status(indicator_, APP_INDICATOR_STATUS_ACTIVE);
+
+    // 添加菜单项
+    item_show_.signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_show_window));
+    item_quit_.signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_quit_app));
+
+    menu_.append(item_show_);
+    menu_.append(item_quit_);
+    menu_.show_all();
+
+    tray_menu_ = GTK_MENU(menu_.gobj());
+    app_indicator_set_menu(indicator_, tray_menu_);
+}
+
+void SchedulerApp::on_show_window()
+{
+    if (main_window)
     {
-        return true; // 阻止窗口关闭
+        main_window->show_all(); // 恢复窗口
+        main_window->present();  // 置前
     }
+}
+
+void SchedulerApp::on_quit_app()
+{
     m_task_manager.stopReminderThread();
     if (m_timer_connection)
         m_timer_connection.disconnect();
-    return false; // 允许窗口关闭
+    quit(); // 正常退出应用程序
+}
+
+bool SchedulerApp::on_main_window_delete_event(GdkEventAny *)
+{
+    // 创建对话框让用户选择退出方式
+    Gtk::MessageDialog dialog(*main_window, "关闭应用程序", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_NONE, true);
+    dialog.set_secondary_text("您希望如何关闭应用程序？");
+
+    dialog.add_button("隐藏到系统托盘", 1);
+    dialog.add_button("直接退出程序", 2);
+    dialog.add_button("取消", Gtk::RESPONSE_CANCEL);
+
+    int result = dialog.run();
+
+    switch (result)
+    {
+    case 1: // 隐藏到系统托盘
+        main_window->hide();
+        return true; // 阻止默认关闭行为
+    case 2:          // 直接退出程序
+        m_task_manager.stopReminderThread();
+        if (m_timer_connection)
+            m_timer_connection.disconnect();
+        quit();
+        return false; // 允许程序退出
+    default:          // 取消
+        return true;  // 阻止关闭，保持窗口显示
+    }
 }
 
 void SchedulerApp::on_agenda_add_task_button_clicked()
@@ -1513,7 +1569,7 @@ void SchedulerApp::on_task_category_combo_changed()
         }
     }
 }
-bool SchedulerApp::on_reminder_entry_focus_in(GdkEventFocus * /*event*/)
+bool SchedulerApp::on_reminder_entry_focus_in(GdkEventFocus *)
 {
     if (task_reminder_entry)
     {
@@ -1522,7 +1578,7 @@ bool SchedulerApp::on_reminder_entry_focus_in(GdkEventFocus * /*event*/)
     }
     return false;
 }
-bool SchedulerApp::on_reminder_entry_focus_out(GdkEventFocus * /*event*/)
+bool SchedulerApp::on_reminder_entry_focus_out(GdkEventFocus *)
 {
     if (!task_reminder_entry)
     {

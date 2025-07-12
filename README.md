@@ -28,6 +28,7 @@
 ```bash
 sudo apt update
 sudo apt install build-essential cmake libgtkmm-3.0-dev
+sudo apt install libayatana-appindicator3-dev
 sudo apt install libssl-dev
 ```
 

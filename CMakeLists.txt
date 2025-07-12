@@ -9,11 +9,13 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+pkg_check_modules(APPINDICATOR REQUIRED ayatana-appindicator3-0.1)
 
 # --- 设置头文件搜索路径 ---
 include_directories(src) 
 include_directories(${GTKMM_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
+include_directories(${APPINDICATOR_INCLUDE_DIRS})
 
 # --- 设置输出路径 ---
 if(NOT CMAKE_BUILD_TYPE)
@@ -30,6 +32,7 @@ target_link_libraries(SchedulerApp PRIVATE
     ${GTKMM_LIBRARIES} 
     Threads::Threads
     OpenSSL::Crypto
+    ${APPINDICATOR_LIBRARIES}
 )
 
 # 自定义文件复制函数
