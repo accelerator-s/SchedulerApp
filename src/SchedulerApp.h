@@ -170,6 +170,7 @@ private:                                 // 新增私有成员和方法
     void on_view_button_clicked(ViewMode new_mode);
     void on_agenda_add_task_button_clicked();
     void on_agenda_delete_task_button_clicked();
+    bool on_window_delete_event(GdkEventAny *);
 
     // 帮助界面信号处理函数
     void on_help_close_button_clicked();

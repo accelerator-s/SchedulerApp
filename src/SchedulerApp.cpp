@@ -337,6 +337,7 @@ void SchedulerApp::connect_signals()
     if (change_password_window)
         change_password_window->signal_delete_event().connect([this](GdkEventAny *)
                                                               { if(change_password_window) change_password_window->hide(); return true; });
+    main_window->signal_delete_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_window_delete_event));
     Gtk::Button *help_close_button = nullptr;
     m_builder->get_widget("help_close_button", help_close_button);
     help_close_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_help_close_button_clicked));
@@ -605,6 +606,24 @@ void SchedulerApp::on_register_button_clicked()
     }
 }
 
+// 实现窗口安全关闭
+bool SchedulerApp::on_window_delete_event(GdkEventAny *)
+{
+    if (!main_window)
+        return false;
+    Gtk::MessageDialog dialog(*main_window, "退出确认", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO, true);
+    dialog.set_secondary_text("您确定要退出应用程序吗？");
+    int response = dialog.run();
+    if (response == Gtk::RESPONSE_NO)
+    {
+        return true; // 阻止窗口关闭
+    }
+    m_task_manager.stopReminderThread();
+    if (m_timer_connection)
+        m_timer_connection.disconnect();
+    return false; // 允许窗口关闭
+}
+
 void SchedulerApp::on_agenda_add_task_button_clicked()
 {
     if (add_task_dialog)
@@ -700,6 +719,7 @@ void SchedulerApp::on_menu_item_delete_account_activated()
     }
 }
 
+// 帮助菜单项激活处理函数
 void SchedulerApp::on_menu_item_help_activated()
 {
     if (help_window)
@@ -940,7 +960,7 @@ void SchedulerApp::populate_month_view()
             event_box->add(*overlay); // 将Overlay放入EventBox中
 
             // 点击非当前月自动跳转
-            event_box->signal_button_press_event().connect([this, current_cell_date_t, displayed_tm](GdkEventButton *event)
+            event_box->signal_button_press_event().connect([this, current_cell_date_t, displayed_tm](GdkEventButton *)
                                                            {
                 tm clicked_tm = *localtime(&current_cell_date_t);
                 if (clicked_tm.tm_mon != displayed_tm.tm_mon || clicked_tm.tm_year != displayed_tm.tm_year) {
