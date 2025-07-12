@@ -15,7 +15,7 @@ public:
     SchedulerApp();
 
     // 提醒回调函数，在后台线程触发提醒时被调用
-    void on_reminder(const std::string &title, const std::string &msg);
+    void on_reminder(const string &title, const string &msg);
     // 登录成功后调用的函数，用于启动后台服务
     void on_login_success();
 
@@ -121,7 +121,7 @@ public:
     // 业务逻辑处理器和状态
     UserManager m_user_manager;
     TaskManager m_task_manager;
-    std::string m_current_user;
+    string m_current_user;
     bool m_is_changing_password_from_main = false;
     ViewMode m_current_view_mode = ViewMode::WEEK;
     time_t m_displayed_date;
@@ -134,13 +134,13 @@ public:
     void setup_tray_icon();
 
 private:
-    std::set<time_t> m_days_with_tasks;  // 缓存有任务的日期
+    set<time_t> m_days_with_tasks;       // 缓存有任务的日期
     void update_days_with_tasks_cache(); // 更新缓存的方法
 
     // UI初始化和管理
     void get_widgets();
     void connect_signals();
-    void show_message(const std::string &title, const std::string &msg);
+    void show_message(const string &title, const string &msg);
 
     // UI更新和辅助函数
     void update_all_views();
@@ -153,12 +153,13 @@ private:
     void update_view_switcher_ui();
     void update_end_time_label();
     void reset_add_task_dialog();
-    std::string priority_to_string(Priority p);
-    std::string category_to_string(const Task &task);
+    string priority_to_string(Priority p);
+    string category_to_string(const Task &task);
     bool get_time_from_user(tm &time_struct, Gtk::Window &parent);
-    std::string get_task_status(const Task &task, time_t current_time);
-    std::string get_reminder_status(const Task &task);
-    std::string format_timespan(time_t start_time, time_t end_time);
+    string get_task_status(const Task &task, time_t current_time);
+    string get_reminder_status(const Task &task);
+    string format_timespan_simple(time_t start_time, time_t end_time);
+    string format_timespan_complex(time_t start_time, time_t end_time);
 
     // 登录界面信号处理函数
     void on_login_button_clicked();
@@ -201,7 +202,7 @@ private:
     // 提醒时间输入框的焦点事件处理
     bool on_reminder_entry_focus_in(GdkEventFocus *event);
     bool on_reminder_entry_focus_out(GdkEventFocus *event);
-    bool day_has_tasks(time_t day_time, const std::vector<Task> &all_tasks);
+    bool day_has_tasks(time_t day_time, const vector<Task> &all_tasks);
 
     // 托盘图标相关处理
     AppIndicator *indicator_ = nullptr;

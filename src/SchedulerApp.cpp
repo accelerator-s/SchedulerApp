@@ -19,8 +19,22 @@ string time_t_to_datetime_string(time_t time)
     return buffer;
 }
 
+string SchedulerApp::format_timespan_simple(time_t start_time, time_t end_time)
+{
+    tm tm_start = *localtime(&start_time);
+    tm tm_end = *localtime(&end_time);
+
+    char start_buf[50];
+    char end_buf[50];
+
+    strftime(start_buf, sizeof(start_buf), "%Y.%m.%d %H:%M", &tm_start);
+    strftime(end_buf, sizeof(end_buf), "%Y.%m.%d %H:%M", &tm_end);
+
+    return string(start_buf) + " - " + string(end_buf);
+}
+
 // 新的智能时间段格式化函数
-string SchedulerApp::format_timespan(time_t start_time, time_t end_time)
+string SchedulerApp::format_timespan_complex(time_t start_time, time_t end_time)
 {
     tm tm_start = *localtime(&start_time);
     tm tm_end = *localtime(&end_time);
@@ -120,7 +134,7 @@ string SchedulerApp::get_reminder_status(const Task &task)
 }
 
 // 新增辅助函数：检查指定日期是否有任务
-bool SchedulerApp::day_has_tasks(time_t day_time, const std::vector<Task> &all_tasks)
+bool SchedulerApp::day_has_tasks(time_t day_time, const vector<Task> &all_tasks)
 {
     tm start_of_day_tm = *localtime(&day_time);
     start_of_day_tm.tm_hour = 0;
@@ -307,8 +321,8 @@ void SchedulerApp::get_widgets()
 
     for (int i = 0; i < 7; ++i)
     {
-        m_builder->get_widget("week_day_button_" + std::to_string(i), m_week_day_buttons[i]);
-        m_builder->get_widget("week_day_label_" + std::to_string(i), m_week_day_labels[i]);
+        m_builder->get_widget("week_day_button_" + to_string(i), m_week_day_buttons[i]);
+        m_builder->get_widget("week_day_label_" + to_string(i), m_week_day_labels[i]);
     }
 }
 
@@ -1082,7 +1096,7 @@ void SchedulerApp::populate_week_view()
 
         char day_num_buf[4];
         strftime(day_num_buf, sizeof(day_num_buf), "%d", &iterator_tm);
-        std::string label_text = day_name_str + "\n" + day_num_buf;
+        string label_text = day_name_str + "\n" + day_num_buf;
         m_week_day_labels[col]->set_text(label_text);
 
         if (m_week_day_signal_connections[col].connected())
@@ -1140,14 +1154,16 @@ void SchedulerApp::update_selected_day_details()
     time_t end_of_day = start_of_day + 86400; // 第二天零点
 
     vector<Task> tasks = m_task_manager.getAllTasks();
-    std::sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
-              { return a.startTime < b.startTime; });
+    sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
+         { return a.startTime < b.startTime; });
 
+    bool has_tasks_today = false;
     for (const auto &task : tasks)
     {
         // 严格过滤，确保任务的开始时间在选中日的00:00:00和23:59:59之间
         if (task.startTime >= start_of_day && task.startTime < end_of_day)
         {
+            has_tasks_today = true;
             auto row = Gtk::make_managed<Gtk::ListBoxRow>();
             auto event_box = Gtk::make_managed<Gtk::EventBox>();
 
@@ -1156,7 +1172,7 @@ void SchedulerApp::update_selected_day_details()
 
             auto line1_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 0);
             time_t end_time = task.startTime + task.duration * 60;
-            auto time_label = Gtk::make_managed<Gtk::Label>(format_timespan(task.startTime, end_time));
+            auto time_label = Gtk::make_managed<Gtk::Label>(format_timespan_complex(task.startTime, end_time));
             auto name_label = Gtk::make_managed<Gtk::Label>();
             name_label->set_markup("<b>" + task.name + "</b>");
             name_label->set_hexpand(true);
@@ -1203,6 +1219,40 @@ void SchedulerApp::update_selected_day_details()
             current_list_box->add(*row);
         }
     }
+
+    // 如果当日没有任务，显示提示信息
+    if (!has_tasks_today)
+    {
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        auto event_box = Gtk::make_managed<Gtk::EventBox>();
+
+        auto label = Gtk::make_managed<Gtk::Label>("当日无任务。");
+        label->set_halign(Gtk::ALIGN_CENTER);
+        label->set_valign(Gtk::ALIGN_CENTER);
+        label->set_sensitive(false); // 使文字显示为灰色
+        label->set_margin_top(20);
+        label->set_margin_bottom(20);
+
+        event_box->add(*label);
+        row->add(*event_box);
+        row->set_sensitive(false); // 使整行不可选中
+
+        // 为空任务提示区域添加右键菜单支持（添加任务）
+        event_box->signal_button_press_event().connect([this](GdkEventButton *event)
+                                                       {
+            if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY) {
+                if (m_empty_space_context_menu) {
+                    m_context_menu_task_id = -1;
+                    m_context_menu_date = m_selected_date;
+                    m_empty_space_context_menu->popup_at_pointer((GdkEvent*)event);
+                }
+                return true;
+            }
+            return false; });
+
+        current_list_box->add(*row);
+    }
+
     current_list_box->show_all();
 }
 
@@ -1422,16 +1472,16 @@ void SchedulerApp::on_add_task_ok_button_clicked()
     {
         try
         {
-            std::smatch match;
-            if (std::regex_search(reminder_text, match, std::regex("(\\d+)\\s*分钟前")))
+            smatch match;
+            if (regex_search(reminder_text, match, regex("(\\d+)\\s*分钟前")))
             {
                 newTask.reminderTime = newTask.startTime - (stoi(match[1].str()) * 60);
             }
-            else if (std::regex_search(reminder_text, match, std::regex("(\\d+)\\s*小时前")))
+            else if (regex_search(reminder_text, match, regex("(\\d+)\\s*小时前")))
             {
                 newTask.reminderTime = newTask.startTime - (stoi(match[1].str()) * 3600);
             }
-            else if (std::regex_search(reminder_text, match, std::regex("(\\d+)\\s*天前")))
+            else if (regex_search(reminder_text, match, regex("(\\d+)\\s*天前")))
             {
                 newTask.reminderTime = newTask.startTime - (stoi(match[1].str()) * 86400);
             }
@@ -1608,10 +1658,10 @@ bool SchedulerApp::on_reminder_entry_focus_out(GdkEventFocus *)
     try
     {
         size_t pos = 0;
-        long value = std::stol(text.raw(), &pos);
+        long value = stol(text.raw(), &pos);
         if (pos != text.bytes())
         {
-            throw std::invalid_argument("Extra characters found");
+            throw invalid_argument("Extra characters found");
         }
         if (value <= 0)
         {
@@ -1619,10 +1669,10 @@ bool SchedulerApp::on_reminder_entry_focus_out(GdkEventFocus *)
         }
         else
         {
-            task_reminder_entry->set_text(std::to_string(value) + "分钟前");
+            task_reminder_entry->set_text(to_string(value) + "分钟前");
         }
     }
-    catch (const std::exception &e)
+    catch (const exception &e)
     {
         task_reminder_entry->set_text("不提醒");
     }
@@ -1677,7 +1727,7 @@ void SchedulerApp::update_task_list()
         Gtk::TreeModel::Row row = *(m_refTreeModel->append());
         row[m_Columns.m_col_id] = task.id;
         row[m_Columns.m_col_name] = task.name;
-        row[m_Columns.m_col_timespan] = format_timespan(task.startTime, task.startTime + task.duration * 60);
+        row[m_Columns.m_col_timespan] = format_timespan_simple(task.startTime, task.startTime + task.duration * 60);
         row[m_Columns.m_col_priority] = priority_to_string(task.priority);
         row[m_Columns.m_col_category] = category_to_string(task);
         row[m_Columns.m_col_reminder_option] = task.reminderOption;
@@ -1723,7 +1773,7 @@ void SchedulerApp::show_message(const string &title, const string &msg)
 void SchedulerApp::on_login_success()
 {
     update_days_with_tasks_cache(); // 更新缓存
-    m_task_manager.setReminderCallback([this](const std::string &title, const std::string &msg)
+    m_task_manager.setReminderCallback([this](const string &title, const string &msg)
                                        { Glib::signal_idle().connect_once([this, title, msg]()
                                                                           { 
             this->show_message(title, msg); 
@@ -1735,4 +1785,4 @@ void SchedulerApp::on_login_success()
         return true; }, 60000);
 }
 
-void SchedulerApp::on_reminder(const std::string &title, const std::string &msg) { show_message(title, msg); }
+void SchedulerApp::on_reminder(const string &title, const string &msg) { show_message(title, msg); }
