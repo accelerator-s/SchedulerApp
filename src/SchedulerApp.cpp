@@ -476,7 +476,6 @@ void SchedulerApp::on_login_button_clicked()
             login_window->hide();
         if (main_window)
             main_window->show();
-        update_all_views();
 
         time(&m_displayed_date);
         time(&m_selected_date);
