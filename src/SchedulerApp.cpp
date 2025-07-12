@@ -476,6 +476,7 @@ void SchedulerApp::on_login_button_clicked()
             login_window->hide();
         if (main_window)
             main_window->show();
+        update_all_views();
 
         time(&m_displayed_date);
         time(&m_selected_date);
@@ -807,6 +808,7 @@ void SchedulerApp::on_ctx_menu_delete_task_activated()
     {
         if (m_task_manager.deleteTask(m_context_menu_task_id))
         {
+            update_days_with_tasks_cache(); // 更新缓存
             update_all_views();
             show_message("成功", "任务已删除。");
         }
@@ -932,7 +934,7 @@ void SchedulerApp::populate_month_view()
                 indicator_dot->set_valign(Gtk::ALIGN_START);
                 indicator_dot->set_margin_top(2);
                 indicator_dot->set_margin_right(4);
-                overlay->add_overlay(*indicator_dot); // 添加疊加控件（小点）
+                overlay->add_overlay(*indicator_dot);
             }
 
             auto event_box = Gtk::make_managed<Gtk::EventBox>();
@@ -1183,17 +1185,8 @@ void SchedulerApp::update_view_switcher_ui()
 bool SchedulerApp::on_day_cell_button_press(GdkEventButton *event, time_t date)
 {
     m_selected_date = date;
-    update_all_views();
-
-    if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY)
-    {
-        if (m_empty_space_context_menu)
-        {
-            m_context_menu_date = date;
-            m_context_menu_task_id = -1;
-            m_empty_space_context_menu->popup_at_pointer((GdkEvent *)event);
-        }
-    }
+    if (event->type == GDK_BUTTON_PRESS)
+        update_all_views();
     return true;
 }
 
