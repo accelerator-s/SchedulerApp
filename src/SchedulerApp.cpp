@@ -738,7 +738,7 @@ void SchedulerApp::on_prev_button_clicked()
 void SchedulerApp::on_next_button_clicked()
 {
     tm displayed_tm = *localtime(&m_displayed_date);
-    if (m_current_view_mode == ViewMode::MONTH)
+    if (m_current_view_mode == ViewMode::MONTH) // 正确处理月视图
     {
         if (displayed_tm.tm_mon == 11)
         {
@@ -939,7 +939,22 @@ void SchedulerApp::populate_month_view()
 
             auto event_box = Gtk::make_managed<Gtk::EventBox>();
             event_box->add(*overlay); // 将Overlay放入EventBox中
-            event_box->signal_button_press_event().connect(sigc::bind(sigc::mem_fun(*this, &SchedulerApp::on_day_cell_button_press), current_cell_date_t));
+
+            // 点击非当前月自动跳转
+            event_box->signal_button_press_event().connect([this, current_cell_date_t, displayed_tm](GdkEventButton *event)
+                                                           {
+                tm clicked_tm = *localtime(&current_cell_date_t);
+                if (clicked_tm.tm_mon != displayed_tm.tm_mon || clicked_tm.tm_year != displayed_tm.tm_year) {
+                    // 跳转到点击的月份
+                    this->m_displayed_date = current_cell_date_t;
+                    this->m_selected_date = current_cell_date_t;
+                    this->update_all_views();
+                } else {
+                    // 原有逻辑：只选中当天
+                    this->m_selected_date = current_cell_date_t;
+                    this->update_all_views();
+                }
+                return true; });
 
             auto cell_frame = Gtk::make_managed<Gtk::Frame>();
             cell_frame->add(*event_box);
