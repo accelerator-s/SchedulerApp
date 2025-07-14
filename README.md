@@ -12,7 +12,7 @@
     *   支持添加、删除、修改任务。
     *   任务属性包括：名称、开始时间、时长、优先级（高/中/低）、分类（学习/娱乐/生活/其他/自定义）、提醒时间、提醒选项、任务状态。
     *   支持右键菜单快捷操作。
-*   **多线程提醒**：后台线程周期性检查任务，到达提醒时间自动弹窗提醒，支持自定义提醒时间和提醒选项。
+*   **多线程提醒**：后台线程周期性检查任务，到达提醒时间自动弹窗提醒，播放自定义音频，支持自定义提醒时间和提醒选项。
 *   **后台静默运行**：支持最小化到系统托盘，最小化后仍然具有提醒功能。
 *   **数据持久化**：用户数据和任务数据均保存到本地文件，支持多用户独立数据。
 *   **帮助说明**：内置帮助窗口，随时查看软件使用说明。
@@ -30,7 +30,8 @@
 sudo apt update
 sudo apt install build-essential cmake libgtkmm-3.0-dev
 sudo apt install libayatana-appindicator3-dev
-sudo apt install libssl-dev
+sudo apt install libssl-dev libsfml-dev
+sudo apt install mpg123
 ```
 
 ## 编译与运行
