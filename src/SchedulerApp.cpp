@@ -1005,6 +1005,21 @@ void SchedulerApp::on_agenda_add_task_button_clicked()
 {
     if (add_task_dialog)
     {
+        // 重置编辑状态，确保这是添加任务而不是修改任务
+        m_is_editing_task = false;
+        m_editing_task_id = -1;
+
+        // 恢复对话框标题为"添加新任务"
+        add_task_dialog->set_title("添加新任务");
+
+        // 重新启用所有控件（可能之前被编辑模式禁用）
+        if (task_start_time_button)
+            task_start_time_button->set_sensitive(true);
+        if (task_reminder_combo)
+            task_reminder_combo->set_sensitive(true);
+        if (task_reminder_entry)
+            task_reminder_entry->set_sensitive(true);
+
         reset_add_task_dialog();
         time_t now;
         time(&now);
@@ -1182,6 +1197,21 @@ void SchedulerApp::on_ctx_menu_add_task_activated()
 {
     if (add_task_dialog)
     {
+        // 重置编辑状态，确保这是添加任务而不是修改任务
+        m_is_editing_task = false;
+        m_editing_task_id = -1;
+
+        // 恢复对话框标题为"添加新任务"
+        add_task_dialog->set_title("添加新任务");
+
+        // 重新启用所有控件（可能之前被编辑模式禁用）
+        if (task_start_time_button)
+            task_start_time_button->set_sensitive(true);
+        if (task_reminder_combo)
+            task_reminder_combo->set_sensitive(true);
+        if (task_reminder_entry)
+            task_reminder_entry->set_sensitive(true);
+
         // 保存右键菜单的日期，因为reset_add_task_dialog()会将其重置为0
         time_t saved_context_date = m_context_menu_date;
         reset_add_task_dialog();
