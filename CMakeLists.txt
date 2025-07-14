@@ -6,11 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- 查找依赖包 ---
 find_package(PkgConfig REQUIRED)
+
 pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 pkg_check_modules(APPINDICATOR REQUIRED ayatana-appindicator3-0.1)
 
+find_package(SFML 2.5 REQUIRED COMPONENTS system window graphics audio)
 # --- 设置头文件搜索路径 ---
 include_directories(src) 
 include_directories(${GTKMM_INCLUDE_DIRS})
@@ -35,6 +37,9 @@ target_link_libraries(SchedulerApp PRIVATE
     ${APPINDICATOR_LIBRARIES}
 )
 
+target_link_libraries(SchedulerApp PRIVATE sfml-system sfml-window sfml-graphics sfml-audio)
+set(SFML_DIR "/path/to/sfml/share/cmake/SFML")
+find_package(SFML 2.5 REQUIRED COMPONENTS system window graphics audio)
 # 自定义文件复制函数
 add_custom_command(
     TARGET SchedulerApp POST_BUILD
@@ -42,6 +47,10 @@ add_custom_command(
         "${CMAKE_CURRENT_SOURCE_DIR}/src/GUIDesign.xml"
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/GUIDesign.xml"
     COMMENT "Copying GUIDesign.xml to output directory..."
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/asserts/notification.mp3"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/notification.mp3"
+    COMMENT "Copying notification.mp3 to output directory..."
 )
 
 

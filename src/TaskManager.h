@@ -31,6 +31,7 @@ public:
         reminder_callback = std::move(callback);
     } // modify just now
 
+    void playNotificationSound();
 private:
     string tasks_file;
     vector<Task> tasks;

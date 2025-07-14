@@ -9,8 +9,71 @@
 #include <condition_variable>
 #include <vector>
 #include <ctime>
-
+#include <sstream>  // 新增：用于命令拼接和输出
+#include <SFML/Audio.hpp>
+#include <unistd.h>  // 用于getcwd（Linux/macOS
+#include <cstdlib>   // 用于system函数
 using namespace std;
+// 获取当前工作目录（跨平台）
+string getCurrentWorkingDir() {
+    char buffer[1024];
+    #ifdef _WIN32
+        if (_getcwd(buffer, sizeof(buffer)) != nullptr) {
+            return string(buffer);
+        }
+    #else
+        if (getcwd(buffer, sizeof(buffer)) != nullptr) {
+            return string(buffer);
+        }
+    #endif
+    return "未知目录";
+}
+
+// 在新线程中播放MP3（使用mpg123命令行工具）
+void playMp3InThread(const string& mp3Path) {
+    try {
+        // 检查文件是否存在
+        ifstream fileCheck(mp3Path);
+        if (!fileCheck.good()) {
+            cerr << "音频文件不存在: " << mp3Path << endl;
+            cerr << "当前工作目录: " << getCurrentWorkingDir() << endl;
+            return;
+        }
+
+        // 跨平台播放命令（使用mpg123）
+        string cmd;
+        #ifdef _WIN32
+            // Windows: 假设mpg123已添加到环境变量，或使用绝对路径
+            cmd = "mpg123 \"" + mp3Path + "\" 2>&1";
+        #else
+            // Linux/macOS: 直接使用系统安装的mpg123
+            cmd = "mpg123 \"" + mp3Path + "\" 2>&1";
+        #endif
+
+        // 执行命令并输出结果（方便调试）
+        cout << "执行播放命令: " << cmd << endl;
+        int exitCode = system(cmd.c_str());
+        if (exitCode != 0) {
+            cerr << "音频播放失败，退出码: " << exitCode << endl;
+        } else {
+            cout << "音频播放完成" << endl;
+        }
+    } catch (const exception& e) {
+        cerr << "播放线程错误: " << e.what() << endl;
+    }
+}
+
+// 启动音频播放线程（外部调用入口）
+void TaskManager::playNotificationSound() {
+    const string mp3Path = "notification.mp3";
+
+    // 启动新线程播放，避免阻塞
+    thread mp3Thread(playMp3InThread, mp3Path);
+    mp3Thread.detach();  // 线程后台运行，无需等待
+}
+
+
+
 
 // TaskManager 构造函数
 TaskManager::TaskManager() : next_id(1), m_running(false)
@@ -396,6 +459,10 @@ void TaskManager::reminderCheckLoop()
                              "\n提醒时间: " + reminderTimeStr;
 
                 reminder_callback("提醒", msg);
+                // 创建一个新的线程来播放音频
+                
+                playNotificationSound();
+                
             }
         }
     }
