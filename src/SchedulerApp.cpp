@@ -232,26 +232,32 @@ vector<SchedulerApp::TaskSegment> SchedulerApp::sort_tasks_with_conflicts(vector
         }
     }
 
-    // 为冲突任务标记最高优先级
+    // 先找出当天所有任务的最高优先级（只考虑当天开始的任务）
+    Priority highest_priority_of_day = Priority::LOW; // 默认为最低优先级
+    bool has_today_tasks = false;
+
+    for (size_t i = 0; i < segments.size(); ++i)
+    {
+        // 只考虑当天开始的任务
+        if (segments[i].original_start >= start_of_day)
+        {
+            has_today_tasks = true;
+            if (static_cast<int>(segments[i].priority) < static_cast<int>(highest_priority_of_day))
+            {
+                highest_priority_of_day = segments[i].priority;
+            }
+        }
+    }
+
+    // 为冲突任务标记最高优先级（只有当天任务的最高优先级才会被高亮）
     for (size_t i = 0; i < segments.size(); ++i)
     {
         if (segments[i].has_conflict)
         {
-            // 找到与当前任务冲突的所有任务中的最高优先级
-            Priority highest_priority = segments[i].priority;
-            for (size_t j = 0; j < segments.size(); ++j)
-            {
-                if (i != j && tasks_overlap(segments[i], segments[j]))
-                {
-                    if (static_cast<int>(segments[j].priority) < static_cast<int>(highest_priority))
-                    {
-                        highest_priority = segments[j].priority;
-                    }
-                }
-            }
+            // 只有当天任务且优先级等于当天最高优先级时才高亮
+            bool current_task_is_today = (segments[i].original_start >= start_of_day);
 
-            // 如果当前任务是最高优先级，标记它
-            if (segments[i].priority == highest_priority)
+            if (has_today_tasks && current_task_is_today && segments[i].priority == highest_priority_of_day)
             {
                 segments[i].is_highest_priority_in_conflict = true;
             }
