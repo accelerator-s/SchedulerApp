@@ -61,6 +61,7 @@ bool TaskManager::addTask(const Task &task)
 {
     lock_guard<mutex> lock(tasks_mutex);
 
+    // 只检查完全相同的任务（同名且同开始时间）
     for (const auto &existing_task : tasks)
     {
         if (existing_task.name == task.name && existing_task.startTime == task.startTime)
@@ -99,6 +100,45 @@ bool TaskManager::deleteTask(long long taskId)
 
     cerr << "错误: 未找到ID为 " << taskId << " 的任务。" << endl;
     return false;
+}
+
+// 根据ID修改任务
+bool TaskManager::updateTask(const Task &task)
+{
+    lock_guard<mutex> lock(tasks_mutex);
+
+    auto it = find_if(tasks.begin(), tasks.end(), [task](const Task &t)
+                      { return t.id == task.id; });
+
+    if (it != tasks.end())
+    {
+        *it = task; // 用新任务替换旧任务
+        // 重新排序任务列表
+        sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
+             { return a.startTime < b.startTime; });
+        rewriteTasksFile(); // 重写整个文件
+        cout << "成功修改ID为 " << task.id << " 的任务。" << endl;
+        return true;
+    }
+
+    cerr << "错误: 未找到ID为 " << task.id << " 的任务。" << endl;
+    return false;
+}
+
+// 根据ID获取任务指针
+Task *TaskManager::getTaskById(long long taskId)
+{
+    lock_guard<mutex> lock(tasks_mutex);
+
+    auto it = find_if(tasks.begin(), tasks.end(), [taskId](const Task &task)
+                      { return task.id == taskId; });
+
+    if (it != tasks.end())
+    {
+        return &(*it);
+    }
+
+    return nullptr;
 }
 
 // 获取所有任务的副本

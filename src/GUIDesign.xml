@@ -1509,6 +1509,13 @@
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <child>
+      <object class="GtkMenuItem" id="ctx_menu_revise_task">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">修改任务</property>
+      </object>
+    </child>
+    <child>
       <object class="GtkMenuItem" id="ctx_menu_delete_task">
         <property name="visible">True</property>
         <property name="can-focus">False</property>

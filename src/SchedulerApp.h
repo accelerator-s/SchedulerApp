@@ -102,7 +102,7 @@ public:
 
     // 右键上下文菜单
     Gtk::Menu *m_task_context_menu = nullptr, *m_empty_space_context_menu = nullptr;
-    Gtk::MenuItem *m_ctx_menu_delete_task = nullptr, *m_ctx_menu_add_task = nullptr;
+    Gtk::MenuItem *m_ctx_menu_delete_task = nullptr, *m_ctx_menu_add_task = nullptr, *m_ctx_menu_revise_task = nullptr;
     long long m_context_menu_task_id = -1; // 用于存储右键点击的任务ID
     time_t m_context_menu_date = 0;        // 用于存储右键点击的日期，以便在添加任务时预填
 
@@ -123,6 +123,8 @@ public:
     TaskManager m_task_manager;
     string m_current_user;
     bool m_is_changing_password_from_main = false;
+    bool m_is_editing_task = false;   // 标记是否处于编辑任务模式
+    long long m_editing_task_id = -1; // 正在编辑的任务ID
     ViewMode m_current_view_mode = ViewMode::WEEK;
     time_t m_displayed_date;
     time_t m_selected_date;
@@ -153,6 +155,9 @@ private:
     void update_view_switcher_ui();
     void update_end_time_label();
     void reset_add_task_dialog();
+    void populate_edit_task_dialog(const Task &task);
+    void apply_edit_task_constraints(const Task &task);
+    void update_task_context_menu_availability(long long task_id);
     string priority_to_string(Priority p);
     string category_to_string(const Task &task);
     bool get_time_from_user(tm &time_struct, Gtk::Window &parent);
@@ -161,12 +166,38 @@ private:
     string format_timespan_simple(time_t start_time, time_t end_time);
     string format_timespan_complex(time_t start_time, time_t end_time);
 
+    // 跨天任务处理相关函数
+    struct TaskSegment
+    {
+        long long id;
+        string name;
+        time_t display_start;  // 在当天显示的开始时间
+        time_t display_end;    // 在当天显示的结束时间
+        time_t original_start; // 原始任务开始时间
+        time_t original_end;   // 原始任务结束时间
+        Priority priority;
+        Category category;
+        string customCategory;
+        string reminderOption;
+        bool is_cross_day;                    // 是否是跨天任务片段
+        bool is_first_segment;                // 是否是第一个片段（用于显示任务名称等）
+        bool has_conflict;                    // 是否与其他任务有时间冲突
+        bool is_highest_priority_in_conflict; // 是否是冲突组中的最高优先级任务
+    };
+    vector<TaskSegment> get_tasks_for_day(time_t day_time);
+    string format_cross_day_timespan(const TaskSegment &segment);
+
+    // 冲突检测和排序相关函数
+    bool tasks_overlap(const TaskSegment &task1, const TaskSegment &task2);
+    vector<TaskSegment> sort_tasks_with_conflicts(vector<TaskSegment> &segments, time_t day_time);
+
     // 登录界面信号处理函数
     void on_login_button_clicked();
     void on_show_register_button_clicked();
     void on_register_button_clicked();
     void on_show_change_password_button_clicked();
     void on_cp_confirm_button_clicked();
+    bool on_login_window_delete_event(GdkEventAny *);
 
     // 主界面信号处理函数
     void on_prev_button_clicked();
@@ -185,6 +216,7 @@ private:
     bool on_list_box_button_press(GdkEventButton *event, Gtk::ListBox *listbox);
     void on_ctx_menu_add_task_activated();
     void on_ctx_menu_delete_task_activated();
+    void on_ctx_menu_revise_task_activated();
 
     // "设置" 菜单的信号处理函数
     void on_menu_item_logout_activated();

@@ -67,6 +67,187 @@ string SchedulerApp::format_timespan_complex(time_t start_time, time_t end_time)
     return string(start_buf) + " - " + string(end_buf);
 }
 
+// 获取某一天应该显示的任务片段（处理跨天任务）
+vector<SchedulerApp::TaskSegment> SchedulerApp::get_tasks_for_day(time_t day_time)
+{
+    vector<TaskSegment> segments;
+
+    // 获取当天的开始和结束时间
+    tm day_tm = *localtime(&day_time);
+    day_tm.tm_hour = 0;
+    day_tm.tm_min = 0;
+    day_tm.tm_sec = 0;
+    time_t start_of_day = mktime(&day_tm);
+    time_t end_of_day = start_of_day + 86400; // 第二天零点
+
+    vector<Task> all_tasks = m_task_manager.getAllTasks();
+
+    for (const auto &task : all_tasks)
+    {
+        time_t task_end = task.startTime + task.duration * 60;
+
+        // 检查任务是否与当天有重叠
+        if (task_end > start_of_day && task.startTime < end_of_day)
+        {
+            TaskSegment segment;
+            segment.id = task.id;
+            segment.name = task.name;
+            segment.original_start = task.startTime;
+            segment.original_end = task_end;
+            segment.priority = task.priority;
+            segment.category = task.category;
+            segment.customCategory = task.customCategory;
+            segment.reminderOption = task.reminderOption;
+
+            // 确定在当天显示的时间范围
+            segment.display_start = max(task.startTime, start_of_day);
+            segment.display_end = min(task_end, end_of_day);
+
+            // 判断是否是跨天任务
+            segment.is_cross_day = (task.startTime < start_of_day) || (task_end > end_of_day);
+            segment.is_first_segment = (task.startTime >= start_of_day);
+            segment.has_conflict = false;                    // 初始化为无冲突，稍后会重新计算
+            segment.is_highest_priority_in_conflict = false; // 初始化为非最高优先级
+
+            segments.push_back(segment);
+        }
+    }
+
+    // 按显示开始时间排序
+    sort(segments.begin(), segments.end(), [](const TaskSegment &a, const TaskSegment &b)
+         { return a.display_start < b.display_start; });
+
+    return segments;
+}
+
+// 格式化跨天任务的时间显示
+string SchedulerApp::format_cross_day_timespan(const TaskSegment &segment)
+{
+    tm start_tm = *localtime(&segment.display_start);
+    tm end_tm = *localtime(&segment.display_end);
+
+    char start_buf[20];
+    char end_buf[20];
+
+    if (segment.is_cross_day)
+    {
+        // 跨天任务使用特殊格式
+        strftime(start_buf, sizeof(start_buf), "%H:%M", &start_tm);
+        strftime(end_buf, sizeof(end_buf), "%H:%M", &end_tm);
+
+        // 计算当天的开始和结束时间
+        tm day_tm = *localtime(&segment.display_start);
+        day_tm.tm_hour = 0;
+        day_tm.tm_min = 0;
+        day_tm.tm_sec = 0;
+        time_t start_of_day = mktime(&day_tm);
+        time_t end_of_day = start_of_day + 86400;
+
+        if (segment.display_start == start_of_day) // 00:00
+        {
+            strcpy(start_buf, "00:00");
+        }
+        if (segment.display_end == end_of_day) // 下一天的00:00，显示为23:59
+        {
+            strcpy(end_buf, "23:59");
+        }
+    }
+    else
+    {
+        // 非跨天任务使用正常格式
+        strftime(start_buf, sizeof(start_buf), "%H:%M", &start_tm);
+        strftime(end_buf, sizeof(end_buf), "%H:%M", &end_tm);
+    }
+
+    return string(start_buf) + " - " + string(end_buf);
+}
+
+// 检查两个任务段是否重叠
+bool SchedulerApp::tasks_overlap(const TaskSegment &task1, const TaskSegment &task2)
+{
+    // 两个时间段重叠的条件：
+    // task1开始时间 < task2结束时间 && task1结束时间 > task2开始时间
+    return task1.display_start < task2.display_end && task1.display_end > task2.display_start;
+}
+
+// 对任务进行冲突感知排序
+vector<SchedulerApp::TaskSegment> SchedulerApp::sort_tasks_with_conflicts(vector<TaskSegment> &segments, time_t day_time)
+{
+    // 获取当天的开始时间，用于判断任务是否在当天开始
+    tm day_tm = *localtime(&day_time);
+    day_tm.tm_hour = 0;
+    day_tm.tm_min = 0;
+    day_tm.tm_sec = 0;
+    time_t start_of_day = mktime(&day_tm);
+
+    // 标记每个任务的冲突状态
+    for (size_t i = 0; i < segments.size(); ++i)
+    {
+        segments[i].has_conflict = false;                    // 使用新的冲突标记字段
+        segments[i].is_highest_priority_in_conflict = false; // 初始化最高优先级标记
+        for (size_t j = 0; j < segments.size(); ++j)
+        {
+            if (i != j && tasks_overlap(segments[i], segments[j]))
+            {
+                segments[i].has_conflict = true; // 标记有冲突
+                break;
+            }
+        }
+    }
+
+    // 为冲突任务标记最高优先级
+    for (size_t i = 0; i < segments.size(); ++i)
+    {
+        if (segments[i].has_conflict)
+        {
+            // 找到与当前任务冲突的所有任务中的最高优先级
+            Priority highest_priority = segments[i].priority;
+            for (size_t j = 0; j < segments.size(); ++j)
+            {
+                if (i != j && tasks_overlap(segments[i], segments[j]))
+                {
+                    if (static_cast<int>(segments[j].priority) < static_cast<int>(highest_priority))
+                    {
+                        highest_priority = segments[j].priority;
+                    }
+                }
+            }
+
+            // 如果当前任务是最高优先级，标记它
+            if (segments[i].priority == highest_priority)
+            {
+                segments[i].is_highest_priority_in_conflict = true;
+            }
+        }
+    }
+
+    // 排序逻辑：
+    // 1. 优先按开始时间排序（但要区分当天开始的任务和跨天延续的任务）
+    // 2. 开始时间相同时，按优先级排序（高->中->低）
+    sort(segments.begin(), segments.end(), [start_of_day](const TaskSegment &a, const TaskSegment &b)
+         {
+        // 确定每个任务在当天的有效开始时间（排除跨天干扰）
+        time_t a_effective_start = max(a.original_start, start_of_day);
+        time_t b_effective_start = max(b.original_start, start_of_day);
+        
+        // 如果有效开始时间不同，按时间排序
+        if (a_effective_start != b_effective_start)
+        {
+            return a_effective_start < b_effective_start;
+        }
+        
+        // 开始时间相同时，按优先级排序：HIGH -> MEDIUM -> LOW
+        if (a.priority != b.priority)
+        {
+            return static_cast<int>(a.priority) < static_cast<int>(b.priority);
+        }
+        
+        // 优先级也相同时，按任务ID排序（保证稳定排序）
+        return a.id < b.id; });
+
+    return segments;
+}
+
 // 辅助函数，将 Priority 枚举转换为字符串
 string SchedulerApp::priority_to_string(Priority p)
 {
@@ -133,7 +314,7 @@ string SchedulerApp::get_reminder_status(const Task &task)
     return "未提醒";
 }
 
-// 新增辅助函数：检查指定日期是否有任务
+// 新增辅助函数：检查指定日期是否有任务（考虑跨天任务）
 bool SchedulerApp::day_has_tasks(time_t day_time, const vector<Task> &all_tasks)
 {
     tm start_of_day_tm = *localtime(&day_time);
@@ -145,7 +326,9 @@ bool SchedulerApp::day_has_tasks(time_t day_time, const vector<Task> &all_tasks)
 
     for (const auto &task : all_tasks)
     {
-        if (task.startTime >= start_of_day && task.startTime < end_of_day)
+        time_t task_end = task.startTime + task.duration * 60;
+        // 检查任务是否与当天有重叠
+        if (task_end > start_of_day && task.startTime < end_of_day)
         {
             return true; // 找到一个任务就返回
         }
@@ -159,6 +342,8 @@ SchedulerApp::SchedulerApp() : Gtk::Application("org.cpp.scheduler.app")
     time(&m_displayed_date);
     time(&m_selected_date);
     m_current_view_mode = ViewMode::WEEK; // 初始化为周视图
+    m_is_editing_task = false;            // 初始化编辑状态
+    m_editing_task_id = -1;
 }
 
 // 静态工厂方法，创建应用实例
@@ -234,12 +419,27 @@ void SchedulerApp::update_days_with_tasks_cache()
     vector<Task> all_tasks = m_task_manager.getAllTasks();
     for (const auto &task : all_tasks)
     {
+        time_t task_end = task.startTime + task.duration * 60;
+
         // 将任务开始时间标准化为当天的零点
-        tm task_day_tm = *localtime(&task.startTime);
-        task_day_tm.tm_hour = 0;
-        task_day_tm.tm_min = 0;
-        task_day_tm.tm_sec = 0;
-        m_days_with_tasks.insert(mktime(&task_day_tm));
+        tm start_day_tm = *localtime(&task.startTime);
+        start_day_tm.tm_hour = 0;
+        start_day_tm.tm_min = 0;
+        start_day_tm.tm_sec = 0;
+        time_t start_day = mktime(&start_day_tm);
+
+        // 将任务结束时间标准化为当天的零点
+        tm end_day_tm = *localtime(&task_end);
+        end_day_tm.tm_hour = 0;
+        end_day_tm.tm_min = 0;
+        end_day_tm.tm_sec = 0;
+        time_t end_day = mktime(&end_day_tm);
+
+        // 为任务涉及的每一天都添加到缓存中
+        for (time_t current_day = start_day; current_day <= end_day; current_day += 86400)
+        {
+            m_days_with_tasks.insert(current_day);
+        }
     }
 }
 
@@ -310,6 +510,7 @@ void SchedulerApp::get_widgets()
     m_builder->get_widget("empty_space_context_menu", m_empty_space_context_menu);
     m_builder->get_widget("ctx_menu_delete_task", m_ctx_menu_delete_task);
     m_builder->get_widget("ctx_menu_add_task", m_ctx_menu_add_task);
+    m_builder->get_widget("ctx_menu_revise_task", m_ctx_menu_revise_task);
 
     // 为任务持续时间选择器设置范围和步长
     if (task_duration_spin)
@@ -354,11 +555,12 @@ void SchedulerApp::connect_signals()
     if (change_password_window)
         change_password_window->signal_delete_event().connect([this](GdkEventAny *)
                                                               { if(change_password_window) change_password_window->hide(); return true; });
-
     // --- 主窗口关闭事件处理 ---
     if (main_window)
         main_window->signal_delete_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_main_window_delete_event));
-
+    // --- 登录窗口关闭事件处理 ---
+    if (login_window)
+        login_window->signal_delete_event().connect(sigc::mem_fun(*this, &SchedulerApp::on_login_window_delete_event));
     Gtk::Button *help_close_button = nullptr;
     m_builder->get_widget("help_close_button", help_close_button);
     help_close_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_help_close_button_clicked));
@@ -414,6 +616,8 @@ void SchedulerApp::connect_signals()
         m_ctx_menu_add_task->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_ctx_menu_add_task_activated));
     if (m_ctx_menu_delete_task)
         m_ctx_menu_delete_task->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_ctx_menu_delete_task_activated));
+    if (m_ctx_menu_revise_task)
+        m_ctx_menu_revise_task->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_ctx_menu_revise_task_activated));
 
     // 为任务列表和下方任务详情区连接右键点击事件
     if (task_tree_view)
@@ -502,8 +706,8 @@ void SchedulerApp::on_login_button_clicked()
         time(&m_displayed_date);
         time(&m_selected_date);
         m_current_view_mode = ViewMode::WEEK;
-        update_all_views();
         on_login_success();
+        update_all_views();
         break;
     case UserManager::LoginResult::USER_NOT_FOUND:
         show_message("登录失败", "用户不存在。");
@@ -642,6 +846,7 @@ void SchedulerApp::setup_tray_icon()
     item_quit_.signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_quit_app));
 
     menu_.append(item_show_);
+    item_show_.set_sensitive(false); // 未登录状态不允许打开主界面
     menu_.append(item_quit_);
     menu_.show_all();
 
@@ -664,6 +869,13 @@ void SchedulerApp::on_quit_app()
     if (m_timer_connection)
         m_timer_connection.disconnect();
     quit(); // 正常退出应用程序
+}
+
+bool SchedulerApp::on_login_window_delete_event(GdkEventAny *)
+{
+    // 如果用户尝试关闭登录窗口，直接退出应用程序
+    quit();
+    return false; // 允许窗口关闭
 }
 
 bool SchedulerApp::on_main_window_delete_event(GdkEventAny *)
@@ -736,6 +948,7 @@ void SchedulerApp::on_agenda_delete_task_button_clicked()
 
 void SchedulerApp::on_menu_item_logout_activated()
 {
+    item_show_.set_sensitive(false);
     m_task_manager.stopReminderThread();
     if (m_timer_connection)
     {
@@ -868,22 +1081,11 @@ void SchedulerApp::on_ctx_menu_add_task_activated()
 {
     if (add_task_dialog)
     {
+        // 保存右键菜单的日期，因为reset_add_task_dialog()会将其重置为0
+        time_t saved_context_date = m_context_menu_date;
         reset_add_task_dialog();
-        time_t start_t = (m_context_menu_date != 0) ? m_context_menu_date : time(nullptr);
-        tm start_tm = *localtime(&start_t);
-
-        if (m_context_menu_date == 0)
-        { // 如果不是通过右键菜单（即通过按钮），则将时间设置为当前时间
-            m_selected_start_time = start_t;
-        }
-        else
-        { // 如果是通过右键菜单，默认设置到当天的 08:00
-            start_tm.tm_hour = 8;
-            start_tm.tm_min = 0;
-            start_tm.tm_sec = 0;
-            m_selected_start_time = mktime(&start_tm);
-        }
-
+        time_t start_t = (saved_context_date != 0) ? saved_context_date : time(nullptr);
+        m_selected_start_time = start_t;
         if (task_start_time_button)
             task_start_time_button->set_label(time_t_to_datetime_string(m_selected_start_time));
         on_add_task_fields_changed();
@@ -909,6 +1111,64 @@ void SchedulerApp::on_ctx_menu_delete_task_activated()
     m_context_menu_task_id = -1; // 重置
 }
 
+// 修改任务菜单项激活处理函数
+void SchedulerApp::on_ctx_menu_revise_task_activated()
+{
+    if (m_context_menu_task_id != -1)
+    {
+        Task *task = m_task_manager.getTaskById(m_context_menu_task_id);
+        if (task)
+        {
+            m_is_editing_task = true;
+            m_editing_task_id = m_context_menu_task_id;
+
+            // 设置对话框标题为"修改任务"
+            if (add_task_dialog)
+                add_task_dialog->set_title("修改任务");
+
+            // 用现有任务数据填充对话框
+            populate_edit_task_dialog(*task);
+
+            // 应用编辑约束
+            apply_edit_task_constraints(*task);
+
+            add_task_dialog->show();
+        }
+        else
+        {
+            show_message("错误", "未找到要修改的任务。");
+        }
+    }
+    m_context_menu_task_id = -1; // 重置
+}
+
+// 更新任务右键菜单项的可用性
+void SchedulerApp::update_task_context_menu_availability(long long task_id)
+{
+    if (!m_ctx_menu_revise_task)
+        return;
+
+    Task *task = m_task_manager.getTaskById(task_id);
+    if (!task)
+    {
+        m_ctx_menu_revise_task->set_sensitive(false);
+        return;
+    }
+
+    time_t now = time(nullptr);
+    string status = get_task_status(*task, now);
+
+    // 已结束的任务不能修改
+    if (status == "已结束")
+    {
+        m_ctx_menu_revise_task->set_sensitive(false);
+    }
+    else
+    {
+        m_ctx_menu_revise_task->set_sensitive(true);
+    }
+}
+
 // --- 核心UI更新函数 ---
 
 void SchedulerApp::update_all_views()
@@ -926,7 +1186,7 @@ void SchedulerApp::update_all_views()
     {
     case ViewMode::MONTH:
         m_main_stack->set_visible_child("month_view");
-        populate_month_view();
+        populate_month_view(); // 填充月视图的日期格
         break;
     case ViewMode::WEEK:
         m_main_stack->set_visible_child("week_view");
@@ -1029,10 +1289,23 @@ void SchedulerApp::populate_month_view()
             auto event_box = Gtk::make_managed<Gtk::EventBox>();
             event_box->add(*overlay); // 将Overlay放入EventBox中
 
-            // 点击非当前月自动跳转
-            event_box->signal_button_press_event().connect([this, current_cell_date_t, displayed_tm](GdkEventButton *)
+            // 处理左键点击和右键菜单
+            event_box->signal_button_press_event().connect([this, current_cell_date_t, displayed_tm](GdkEventButton *event)
                                                            {
                 tm clicked_tm = *localtime(&current_cell_date_t);
+                
+                // 处理右键菜单
+                if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY) {
+                    // 设置右键菜单的上下文日期为点击的日期
+                    this->m_context_menu_date = current_cell_date_t;
+                    this->m_context_menu_task_id = -1;
+                    if (this->m_empty_space_context_menu) {
+                        this->m_empty_space_context_menu->popup_at_pointer((GdkEvent*)event);
+                    }
+                    return true;
+                }
+                
+                // 处理左键点击 - 点击非当前月自动跳转
                 if (clicked_tm.tm_mon != displayed_tm.tm_mon || clicked_tm.tm_year != displayed_tm.tm_year) {
                     // 跳转到点击的月份
                     this->m_displayed_date = current_cell_date_t;
@@ -1146,78 +1419,122 @@ void SchedulerApp::update_selected_day_details()
         current_list_box->remove(*child);
     }
 
-    tm start_of_day_tm = *localtime(&m_selected_date);
-    start_of_day_tm.tm_hour = 0;
-    start_of_day_tm.tm_min = 0;
-    start_of_day_tm.tm_sec = 0;
-    time_t start_of_day = mktime(&start_of_day_tm);
-    time_t end_of_day = start_of_day + 86400; // 第二天零点
-
-    vector<Task> tasks = m_task_manager.getAllTasks();
-    sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
-         { return a.startTime < b.startTime; });
+    // 使用新的跨天任务处理逻辑
+    vector<TaskSegment> task_segments = get_tasks_for_day(m_selected_date);
+    task_segments = sort_tasks_with_conflicts(task_segments, m_selected_date);
 
     bool has_tasks_today = false;
-    for (const auto &task : tasks)
+    for (const auto &segment : task_segments)
     {
-        // 严格过滤，确保任务的开始时间在选中日的00:00:00和23:59:59之间
-        if (task.startTime >= start_of_day && task.startTime < end_of_day)
+        has_tasks_today = true;
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        auto event_box = Gtk::make_managed<Gtk::EventBox>();
+
+        auto card_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 8);
+        card_box->get_style_context()->add_class("task-card");
+
+        auto line1_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 0);
+        auto time_label = Gtk::make_managed<Gtk::Label>(format_cross_day_timespan(segment));
+        auto name_label = Gtk::make_managed<Gtk::Label>();
+
+        // 跨天任务片段的名称显示
+        string display_name = segment.name;
+        if (segment.is_cross_day && !segment.is_first_segment)
         {
-            has_tasks_today = true;
-            auto row = Gtk::make_managed<Gtk::ListBoxRow>();
-            auto event_box = Gtk::make_managed<Gtk::EventBox>();
-
-            auto card_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 8);
-            card_box->get_style_context()->add_class("task-card");
-
-            auto line1_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 0);
-            time_t end_time = task.startTime + task.duration * 60;
-            auto time_label = Gtk::make_managed<Gtk::Label>(format_timespan_complex(task.startTime, end_time));
-            auto name_label = Gtk::make_managed<Gtk::Label>();
-            name_label->set_markup("<b>" + task.name + "</b>");
-            name_label->set_hexpand(true);
-            name_label->set_halign(Gtk::ALIGN_START);
-            string status = get_task_status(task, time(nullptr));
-            auto status_label = Gtk::make_managed<Gtk::Label>(status);
-            status_label->set_halign(Gtk::ALIGN_END);
-            status_label->set_margin_end(10);
-            line1_box->pack_start(*time_label, false, false, 10);
-            line1_box->pack_start(*name_label, true, true);
-            line1_box->pack_start(*status_label, false, false);
-
-            auto line2_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 10);
-            auto category_label = Gtk::make_managed<Gtk::Label>(category_to_string(task));
-            category_label->get_style_context()->add_class("category-tag");
-            auto alarm_icon = Gtk::make_managed<Gtk::Image>();
-            alarm_icon->set_from_icon_name("alarm-symbolic", Gtk::ICON_SIZE_MENU);
-            auto remind_label = Gtk::make_managed<Gtk::Label>("提醒时间：" + task.reminderOption);
-            remind_label->get_style_context()->add_class("remind-label");
-
-            line2_box->pack_start(*category_label, false, false, 0);
-            line2_box->pack_start(*alarm_icon, false, false, 0);
-            line2_box->pack_start(*remind_label, false, false, 0);
-
-            card_box->pack_start(*line1_box, false, false, 0);
-            card_box->pack_start(*line2_box, false, false, 0);
-
-            event_box->add(*card_box);
-            row->add(*event_box);
-            row->set_data("task_id", new long long(task.id));
-
-            event_box->signal_button_press_event().connect([this, task_id = task.id](GdkEventButton *event)
-                                                           {
-                if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY) {
-                    if (m_task_context_menu) {
-                        m_context_menu_task_id = task_id;
-                        m_context_menu_date = 0;
-                        m_task_context_menu->popup_at_pointer((GdkEvent*)event);
-                    }
-                    return true;
-                }
-                return false; });
-
-            current_list_box->add(*row);
+            display_name = segment.name + " (续)";
         }
+        else if (segment.is_cross_day && segment.is_first_segment)
+        {
+            tm original_end_tm = *localtime(&segment.original_end);
+            char end_date_buf[20];
+            strftime(end_date_buf, sizeof(end_date_buf), "%m.%d", &original_end_tm);
+            display_name = segment.name + " (至" + string(end_date_buf) + ")";
+        }
+
+        name_label->set_markup("<b>" + display_name + "</b>");
+        name_label->set_hexpand(true);
+        name_label->set_halign(Gtk::ALIGN_START);
+
+        // 使用原始任务的时间计算状态
+        Task temp_task;
+        temp_task.id = segment.id;
+        temp_task.name = segment.name;
+        temp_task.startTime = segment.original_start;
+        temp_task.duration = (segment.original_end - segment.original_start) / 60;
+        temp_task.priority = segment.priority;
+        temp_task.category = segment.category;
+        temp_task.customCategory = segment.customCategory;
+        temp_task.reminderOption = segment.reminderOption;
+
+        string status = get_task_status(temp_task, time(nullptr));
+        auto status_label = Gtk::make_managed<Gtk::Label>(status);
+        status_label->set_halign(Gtk::ALIGN_END);
+        status_label->set_margin_end(10);
+
+        line1_box->pack_start(*time_label, false, false, 10);
+        line1_box->pack_start(*name_label, true, true);
+
+        // 只在有冲突时显示优先级标签
+        if (segment.has_conflict)
+        {
+            auto priority_label = Gtk::make_managed<Gtk::Label>(priority_to_string(segment.priority));
+            priority_label->get_style_context()->add_class("category-tag");
+            priority_label->set_margin_end(5);
+
+            // 如果是冲突组中的最高优先级任务，设置红色文字
+            if (segment.is_highest_priority_in_conflict)
+            {
+                priority_label->set_markup("<span color='red'><b>" + priority_to_string(segment.priority) + "</b></span>");
+            }
+
+            line1_box->pack_start(*priority_label, false, false, 0);
+        }
+
+        line1_box->pack_start(*status_label, false, false);
+
+        auto line2_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 10);
+        auto category_label = Gtk::make_managed<Gtk::Label>(category_to_string(temp_task));
+        category_label->get_style_context()->add_class("category-tag");
+
+        // 如果有冲突，添加冲突标签
+        if (segment.has_conflict)
+        {
+            auto conflict_label = Gtk::make_managed<Gtk::Label>("冲突");
+            conflict_label->get_style_context()->add_class("category-tag");
+            conflict_label->set_markup("<span color='red'><b>冲突</b></span>");
+            line2_box->pack_start(*conflict_label, false, false, 0);
+        }
+
+        auto alarm_icon = Gtk::make_managed<Gtk::Image>();
+        alarm_icon->set_from_icon_name("alarm-symbolic", Gtk::ICON_SIZE_MENU);
+        auto remind_label = Gtk::make_managed<Gtk::Label>("提醒时间：" + segment.reminderOption);
+        remind_label->get_style_context()->add_class("remind-label");
+
+        line2_box->pack_start(*category_label, false, false, 0);
+        line2_box->pack_start(*alarm_icon, false, false, 0);
+        line2_box->pack_start(*remind_label, false, false, 0);
+
+        card_box->pack_start(*line1_box, false, false, 0);
+        card_box->pack_start(*line2_box, false, false, 0);
+
+        event_box->add(*card_box);
+        row->add(*event_box);
+        row->set_data("task_id", new long long(segment.id));
+
+        event_box->signal_button_press_event().connect([this, task_id = segment.id](GdkEventButton *event)
+                                                       {
+            if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY) {
+                if (m_task_context_menu) {
+                    m_context_menu_task_id = task_id;
+                    m_context_menu_date = 0;
+                    update_task_context_menu_availability(task_id);
+                    m_task_context_menu->popup_at_pointer((GdkEvent*)event);
+                }
+                return true;
+            }
+            return false; });
+
+        current_list_box->add(*row);
     }
 
     // 如果当日没有任务，显示提示信息
@@ -1346,6 +1663,7 @@ bool SchedulerApp::on_task_label_button_press(GdkEventButton *event, long long t
         {
             m_context_menu_task_id = task_id;
             m_context_menu_date = 0;
+            update_task_context_menu_availability(task_id);
             m_task_context_menu->popup_at_pointer((GdkEvent *)event);
         }
     }
@@ -1364,6 +1682,7 @@ bool SchedulerApp::on_tree_view_button_press(GdkEventButton *event)
             {
                 m_context_menu_task_id = (*iter)[m_Columns.m_col_id];
                 m_context_menu_date = 0;
+                update_task_context_menu_availability(m_context_menu_task_id);
                 m_task_context_menu->popup_at_pointer((GdkEvent *)event);
             }
         }
@@ -1390,7 +1709,8 @@ bool SchedulerApp::on_list_box_button_press(GdkEventButton *event, Gtk::ListBox 
             if (p_id && m_task_context_menu)
             {
                 m_context_menu_task_id = *p_id;
-                m_context_menu_date = 0;
+                m_context_menu_date = m_selected_date; // 使用选中的日期而不是0
+                update_task_context_menu_availability(*p_id);
                 m_task_context_menu->popup_at_pointer((GdkEvent *)event);
             }
         }
@@ -1428,12 +1748,41 @@ void SchedulerApp::on_add_task_ok_button_clicked()
         show_message("输入错误", "请选择一个开始时间。");
         return;
     }
+
     time_t now = time(nullptr);
-    if (m_selected_start_time <= now)
+
+    // 处理编辑模式和添加模式的不同验证逻辑
+    if (!m_is_editing_task)
     {
-        show_message("时间错误", "任务开始时间必须晚于当前时间。");
-        return;
+        // 添加新任务时，开始时间必须晚于当前时间
+        if (m_selected_start_time <= now)
+        {
+            show_message("时间错误", "任务开始时间必须晚于当前时间。");
+            return;
+        }
     }
+    else
+    {
+        // 编辑现有任务时，获取原任务信息
+        Task *originalTask = m_task_manager.getTaskById(m_editing_task_id);
+        if (!originalTask)
+        {
+            show_message("错误", "找不到要编辑的任务。");
+            return;
+        }
+
+        string status = get_task_status(*originalTask, now);
+
+        // 进行中的任务不能修改开始时间到过去
+        if (status == "进行中" && m_selected_start_time <= now)
+        {
+            show_message("时间错误", "进行中的任务开始时间不能设置为过去。");
+            return;
+        }
+
+        // 未开始的任务可以设置到过去，但要注意提醒时间的处理
+    }
+
     Task newTask;
     newTask.name = name;
     newTask.startTime = m_selected_start_time;
@@ -1505,15 +1854,45 @@ void SchedulerApp::on_add_task_ok_button_clicked()
         }
         if (newTask.reminderTime != 0)
         {
-            if (newTask.reminderTime <= now)
+            // 修改提醒时间验证逻辑，考虑编辑模式的特殊情况
+            if (m_is_editing_task)
             {
-                show_message("时间错误", "提醒时间必须晚于当前时间。");
-                return;
+                Task *originalTask = m_task_manager.getTaskById(m_editing_task_id);
+                if (originalTask && originalTask->reminded)
+                {
+                    // 已提醒的任务保持原提醒时间和状态
+                    newTask.reminderTime = originalTask->reminderTime;
+                    newTask.reminderOption = originalTask->reminderOption;
+                    newTask.reminded = originalTask->reminded;
+                }
+                else
+                {
+                    // 未提醒的任务需要验证新的提醒时间
+                    if (newTask.reminderTime <= now)
+                    {
+                        show_message("时间错误", "提醒时间必须晚于当前时间。");
+                        return;
+                    }
+                    if (newTask.reminderTime >= newTask.startTime)
+                    {
+                        show_message("时间错误", "提醒时间必须早于任务开始时间。");
+                        return;
+                    }
+                }
             }
-            if (newTask.reminderTime >= newTask.startTime)
+            else
             {
-                show_message("时间错误", "提醒时间必须早于任务开始时间。");
-                return;
+                // 新任务的正常验证
+                if (newTask.reminderTime <= now)
+                {
+                    show_message("时间错误", "提醒时间必须晚于当前时间。");
+                    return;
+                }
+                if (newTask.reminderTime >= newTask.startTime)
+                {
+                    show_message("时间错误", "提醒时间必须早于任务开始时间。");
+                    return;
+                }
             }
         }
     }
@@ -1523,24 +1902,93 @@ void SchedulerApp::on_add_task_ok_button_clicked()
         newTask.reminderOption = "不提醒";
     }
 
-    if (m_task_manager.addTask(newTask))
+    // 根据模式选择保存方法
+    bool success = false;
+    if (m_is_editing_task)
     {
-        update_days_with_tasks_cache(); // 更新缓存
-        update_all_views();
-        show_message("成功", "新任务已添加。");
-        if (add_task_dialog)
-            add_task_dialog->hide();
+        // 编辑模式：保留原任务ID和已提醒状态
+        newTask.id = m_editing_task_id;
+        Task *originalTask = m_task_manager.getTaskById(m_editing_task_id);
+        if (originalTask && originalTask->reminded)
+        {
+            newTask.reminded = true;
+        }
+        success = m_task_manager.updateTask(newTask);
     }
     else
     {
-        show_message("失败", "添加任务失败，可能存在同名且同开始时间的任务。");
+        // 添加模式
+        success = m_task_manager.addTask(newTask);
+    }
+
+    if (success)
+    {
+        update_days_with_tasks_cache(); // 更新缓存
+        update_all_views();
+        if (m_is_editing_task)
+        {
+            show_message("成功", "任务已修改。");
+            // 重置编辑状态
+            m_is_editing_task = false;
+            m_editing_task_id = -1;
+            // 恢复对话框标题
+            if (add_task_dialog)
+                add_task_dialog->set_title("添加新任务");
+            // 重新启用所有控件
+            if (task_start_time_button)
+                task_start_time_button->set_sensitive(true);
+            if (task_reminder_combo)
+                task_reminder_combo->set_sensitive(true);
+            if (task_reminder_entry)
+                task_reminder_entry->set_sensitive(true);
+        }
+        else
+        {
+            show_message("成功", "新任务已添加。");
+        }
+        if (add_task_dialog)
+        {
+            add_task_dialog->hide();
+            m_context_menu_date = 0; // 对话框关闭后重置上下文菜单日期
+        }
+    }
+    else
+    {
+        if (m_is_editing_task)
+        {
+            show_message("修改失败", "任务修改失败，可能存在同名且同开始时间的任务。");
+        }
+        else
+        {
+            show_message("添加失败", "任务添加失败，可能存在同名且同开始时间的任务。");
+        }
     }
 }
 
 void SchedulerApp::on_add_task_cancel_button_clicked()
 {
+    // 重置编辑状态
+    if (m_is_editing_task)
+    {
+        m_is_editing_task = false;
+        m_editing_task_id = -1;
+        // 恢复对话框标题
+        if (add_task_dialog)
+            add_task_dialog->set_title("添加新任务");
+        // 重新启用所有控件
+        if (task_start_time_button)
+            task_start_time_button->set_sensitive(true);
+        if (task_reminder_combo)
+            task_reminder_combo->set_sensitive(true);
+        if (task_reminder_entry)
+            task_reminder_entry->set_sensitive(true);
+    }
+
     if (add_task_dialog)
+    {
         add_task_dialog->hide();
+        m_context_menu_date = 0; // 对话框关闭后重置上下文菜单日期
+    }
 }
 void SchedulerApp::on_task_start_time_button_clicked()
 {
@@ -1696,7 +2144,7 @@ void SchedulerApp::reset_add_task_dialog()
     if (task_name_entry)
         task_name_entry->set_text("");
     m_selected_start_time = 0;
-    m_context_menu_date = 0;
+    // 注意：不要在这里重置 m_context_menu_date，因为它可能在函数调用后还需要使用
     if (task_start_time_button)
         task_start_time_button->set_label("选择开始时间...");
     if (task_duration_spin)
@@ -1714,6 +2162,146 @@ void SchedulerApp::reset_add_task_dialog()
     }
     if (task_reminder_combo)
         task_reminder_combo->set_active_id("remind_none");
+}
+
+// 用任务数据填充编辑对话框
+void SchedulerApp::populate_edit_task_dialog(const Task &task)
+{
+    if (task_name_entry)
+        task_name_entry->set_text(task.name);
+
+    m_selected_start_time = task.startTime;
+    if (task_start_time_button)
+        task_start_time_button->set_label(time_t_to_datetime_string(task.startTime));
+
+    if (task_duration_spin)
+        task_duration_spin->set_value(task.duration);
+
+    // 更新结束时间显示
+    update_end_time_label();
+
+    // 设置优先级
+    if (task_priority_combo)
+    {
+        switch (task.priority)
+        {
+        case Priority::HIGH:
+            task_priority_combo->set_active(0);
+            break;
+        case Priority::MEDIUM:
+            task_priority_combo->set_active(1);
+            break;
+        case Priority::LOW:
+            task_priority_combo->set_active(2);
+            break;
+        }
+    }
+
+    // 设置分类
+    if (task_category_combo)
+    {
+        switch (task.category)
+        {
+        case Category::STUDY:
+            task_category_combo->set_active(0);
+            break;
+        case Category::ENTERTAINMENT:
+            task_category_combo->set_active(1);
+            break;
+        case Category::LIFE:
+            task_category_combo->set_active(2);
+            break;
+        case Category::OTHER:
+            task_category_combo->set_active(3);
+            if (task_custom_category_entry)
+            {
+                task_custom_category_entry->set_text(task.customCategory);
+                task_custom_category_entry->show();
+            }
+            break;
+        }
+    }
+
+    // 设置提醒选项
+    if (task_reminder_combo)
+    {
+        if (task.reminderOption.empty() || task.reminderTime == 0)
+        {
+            task_reminder_combo->set_active_id("remind_none");
+        }
+        else if (task.reminderOption == "5分钟前")
+        {
+            task_reminder_combo->set_active_id("remind_5min");
+        }
+        else if (task.reminderOption == "15分钟前")
+        {
+            task_reminder_combo->set_active_id("remind_15min");
+        }
+        else if (task.reminderOption == "30分钟前")
+        {
+            task_reminder_combo->set_active_id("remind_30min");
+        }
+        else if (task.reminderOption == "1小时前")
+        {
+            task_reminder_combo->set_active_id("remind_1hour");
+        }
+        else
+        {
+            // 自定义提醒时间
+            task_reminder_combo->set_active_id("remind_custom");
+            if (task_reminder_entry)
+            {
+                task_reminder_entry->set_text(task.reminderOption);
+                task_reminder_entry->show();
+            }
+        }
+    }
+}
+
+// 根据任务状态应用编辑约束
+void SchedulerApp::apply_edit_task_constraints(const Task &task)
+{
+    time_t now = time(nullptr);
+    string status = get_task_status(task, now);
+
+    // 已结束的任务不应该能够编辑（这个函数不应该被调用）
+    if (status == "已结束")
+    {
+        return;
+    }
+
+    if (status == "进行中")
+    {
+        // 进行中的任务：提醒时间和开始时间不可修改
+        if (task_start_time_button)
+            task_start_time_button->set_sensitive(false);
+        if (task_reminder_combo)
+            task_reminder_combo->set_sensitive(false);
+        if (task_reminder_entry)
+            task_reminder_entry->set_sensitive(false);
+    }
+    else if (status == "未开始")
+    {
+        // 未开始的任务：可修改开始时间，但要考虑提醒时间约束
+        if (task_start_time_button)
+            task_start_time_button->set_sensitive(true);
+
+        // 如果任务已经被提醒过，提醒相关设置不可修改
+        if (task.reminded)
+        {
+            if (task_reminder_combo)
+                task_reminder_combo->set_sensitive(false);
+            if (task_reminder_entry)
+                task_reminder_entry->set_sensitive(false);
+        }
+        else
+        {
+            if (task_reminder_combo)
+                task_reminder_combo->set_sensitive(true);
+            if (task_reminder_entry)
+                task_reminder_entry->set_sensitive(true);
+        }
+    }
 }
 void SchedulerApp::update_task_list()
 {
@@ -1772,6 +2360,7 @@ void SchedulerApp::show_message(const string &title, const string &msg)
 }
 void SchedulerApp::on_login_success()
 {
+    item_show_.set_sensitive(true);
     update_days_with_tasks_cache(); // 更新缓存
     m_task_manager.setReminderCallback([this](const string &title, const string &msg)
                                        { Glib::signal_idle().connect_once([this, title, msg]()
