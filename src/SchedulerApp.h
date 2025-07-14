@@ -165,6 +165,7 @@ private:
     string get_task_status(const Task &task, time_t current_time);
     string get_reminder_status(const Task &task);
     string format_timespan(time_t start_time, time_t end_time);
+    string update_reminder_option_display(time_t reminder_time, time_t start_time);
 
     // 跨天任务处理相关函数
     struct TaskSegment

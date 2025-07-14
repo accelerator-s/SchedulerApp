@@ -145,7 +145,7 @@ string SchedulerApp::format_cross_day_timespan(const TaskSegment &segment)
     char start_buf[20];
     char end_buf[20];
 
-    // 特殊处理：0:00-0:00 的情况
+    // 特殊处理：00:00-00:00 的情况
     if (segment.display_start == segment.display_end)
     {
         tm day_tm = *localtime(&segment.display_start);
@@ -156,7 +156,7 @@ string SchedulerApp::format_cross_day_timespan(const TaskSegment &segment)
 
         if (segment.display_start == start_of_day)
         {
-            return "0:00 - 0:00";
+            return "00:00 - 00:00";
         }
     }
 
@@ -176,7 +176,7 @@ string SchedulerApp::format_cross_day_timespan(const TaskSegment &segment)
 
         if (segment.display_start == start_of_day) // 00:00
         {
-            strcpy(start_buf, "0:00");
+            strcpy(start_buf, "00:00");
         }
         // 处理23:59的情况（原本在0:00结束但被分割的任务）
         if (segment.display_end == end_of_day - 60) // 23:59
@@ -349,6 +349,40 @@ string SchedulerApp::get_reminder_status(const Task &task)
         return "已提醒";
     }
     return "未提醒";
+}
+
+// 根据提醒时间和开始时间重新计算提醒选项的显示
+string SchedulerApp::update_reminder_option_display(time_t reminder_time, time_t start_time)
+{
+    if (reminder_time == 0)
+    {
+        return "不提醒";
+    }
+
+    time_t diff = start_time - reminder_time;
+
+    if (diff <= 0)
+    {
+        return "不提醒";
+    }
+
+    // 计算相差的分钟数、小时数、天数
+    int minutes = diff / 60;
+    int hours = minutes / 60;
+    int days = hours / 24;
+
+    if (days > 0)
+    {
+        return to_string(days) + "天前";
+    }
+    else if (hours > 0)
+    {
+        return to_string(hours) + "小时前";
+    }
+    else
+    {
+        return to_string(minutes) + "分钟前";
+    }
 }
 
 // 新增辅助函数：检查指定日期是否有任务（考虑跨天任务）
@@ -1572,7 +1606,19 @@ void SchedulerApp::update_selected_day_details()
 
         auto alarm_icon = Gtk::make_managed<Gtk::Image>();
         alarm_icon->set_from_icon_name("alarm-symbolic", Gtk::ICON_SIZE_MENU);
-        auto remind_label = Gtk::make_managed<Gtk::Label>("提醒时间：" + segment.reminderOption);
+
+        // 获取正确的提醒时间显示，特别是对于已提醒的任务
+        string reminder_display = segment.reminderOption;
+
+        // 查找对应的完整任务以获取提醒状态信息
+        Task *full_task = m_task_manager.getTaskById(segment.id);
+        if (full_task && full_task->reminded && full_task->reminderTime > 0)
+        {
+            // 已提醒的任务，重新计算显示
+            reminder_display = update_reminder_option_display(full_task->reminderTime, segment.original_start);
+        }
+
+        auto remind_label = Gtk::make_managed<Gtk::Label>("提醒时间：" + reminder_display);
         remind_label->get_style_context()->add_class("remind-label");
 
         line2_box->pack_start(*category_label, false, false, 0);
@@ -1923,9 +1969,9 @@ void SchedulerApp::on_add_task_ok_button_clicked()
                 Task *originalTask = m_task_manager.getTaskById(m_editing_task_id);
                 if (originalTask && originalTask->reminded)
                 {
-                    // 已提醒的任务保持原提醒时间和状态
+                    // 已提醒的任务：保持原提醒时间，但需要重新计算显示
                     newTask.reminderTime = originalTask->reminderTime;
-                    newTask.reminderOption = originalTask->reminderOption;
+                    newTask.reminderOption = update_reminder_option_display(originalTask->reminderTime, newTask.startTime);
                     newTask.reminded = originalTask->reminded;
                 }
                 else
@@ -2115,7 +2161,54 @@ bool SchedulerApp::get_time_from_user(tm &time_struct, Gtk::Window &parent)
     }
     return false;
 }
-void SchedulerApp::on_add_task_fields_changed() { update_end_time_label(); }
+void SchedulerApp::on_add_task_fields_changed()
+{
+    update_end_time_label();
+
+    // 如果正在编辑已提醒的任务，当开始时间变化时重新计算提醒选项显示
+    if (m_is_editing_task && task_reminder_entry && task_reminder_combo)
+    {
+        Task *originalTask = m_task_manager.getTaskById(m_editing_task_id);
+        if (originalTask && originalTask->reminded && originalTask->reminderTime > 0 && m_selected_start_time > 0)
+        {
+            // 重新计算提醒选项显示
+            string new_display = update_reminder_option_display(originalTask->reminderTime, m_selected_start_time);
+
+            // 检查是否是标准选项
+            if (new_display == "5分钟前")
+            {
+                task_reminder_combo->set_active_id("remind_5min");
+                if (task_reminder_entry->get_visible())
+                    task_reminder_entry->hide();
+            }
+            else if (new_display == "15分钟前")
+            {
+                task_reminder_combo->set_active_id("remind_15min");
+                if (task_reminder_entry->get_visible())
+                    task_reminder_entry->hide();
+            }
+            else if (new_display == "30分钟前")
+            {
+                task_reminder_combo->set_active_id("remind_30min");
+                if (task_reminder_entry->get_visible())
+                    task_reminder_entry->hide();
+            }
+            else if (new_display == "1小时前")
+            {
+                task_reminder_combo->set_active_id("remind_1hour");
+                if (task_reminder_entry->get_visible())
+                    task_reminder_entry->hide();
+            }
+            else
+            {
+                // 自定义提醒时间
+                task_reminder_combo->set_active_id("remind_custom");
+                task_reminder_entry->set_text(new_display);
+                task_reminder_entry->show();
+            }
+        }
+    }
+}
 void SchedulerApp::on_task_category_combo_changed()
 {
     if (task_category_combo && task_custom_category_entry)
@@ -2292,30 +2385,40 @@ void SchedulerApp::populate_edit_task_dialog(const Task &task)
         {
             task_reminder_combo->set_active_id("remind_none");
         }
-        else if (task.reminderOption == "5分钟前")
-        {
-            task_reminder_combo->set_active_id("remind_5min");
-        }
-        else if (task.reminderOption == "15分钟前")
-        {
-            task_reminder_combo->set_active_id("remind_15min");
-        }
-        else if (task.reminderOption == "30分钟前")
-        {
-            task_reminder_combo->set_active_id("remind_30min");
-        }
-        else if (task.reminderOption == "1小时前")
-        {
-            task_reminder_combo->set_active_id("remind_1hour");
-        }
         else
         {
-            // 自定义提醒时间
-            task_reminder_combo->set_active_id("remind_custom");
-            if (task_reminder_entry)
+            // 如果任务已提醒，需要重新计算显示文本
+            string display_option = task.reminderOption;
+            if (task.reminded && task.reminderTime > 0)
             {
-                task_reminder_entry->set_text(task.reminderOption);
-                task_reminder_entry->show();
+                display_option = update_reminder_option_display(task.reminderTime, task.startTime);
+            }
+
+            if (display_option == "5分钟前")
+            {
+                task_reminder_combo->set_active_id("remind_5min");
+            }
+            else if (display_option == "15分钟前")
+            {
+                task_reminder_combo->set_active_id("remind_15min");
+            }
+            else if (display_option == "30分钟前")
+            {
+                task_reminder_combo->set_active_id("remind_30min");
+            }
+            else if (display_option == "1小时前")
+            {
+                task_reminder_combo->set_active_id("remind_1hour");
+            }
+            else
+            {
+                // 自定义提醒时间
+                task_reminder_combo->set_active_id("remind_custom");
+                if (task_reminder_entry)
+                {
+                    task_reminder_entry->set_text(display_option);
+                    task_reminder_entry->show();
+                }
             }
         }
     }
@@ -2381,7 +2484,15 @@ void SchedulerApp::update_task_list()
         row[m_Columns.m_col_timespan] = format_timespan(task.startTime, task.startTime + task.duration * 60);
         row[m_Columns.m_col_priority] = priority_to_string(task.priority);
         row[m_Columns.m_col_category] = category_to_string(task);
-        row[m_Columns.m_col_reminder_option] = task.reminderOption;
+
+        // 对于已提醒的任务，重新计算提醒选项显示
+        string reminder_option_display = task.reminderOption;
+        if (task.reminded && task.reminderTime > 0)
+        {
+            reminder_option_display = update_reminder_option_display(task.reminderTime, task.startTime);
+        }
+        row[m_Columns.m_col_reminder_option] = reminder_option_display;
+
         row[m_Columns.m_col_reminder_status] = get_reminder_status(task);
         row[m_Columns.m_col_task_status] = get_task_status(task, current_time);
     }
