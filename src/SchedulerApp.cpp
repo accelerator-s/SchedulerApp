@@ -19,7 +19,7 @@ string time_t_to_datetime_string(time_t time)
     return buffer;
 }
 
-string SchedulerApp::format_timespan_simple(time_t start_time, time_t end_time)
+string SchedulerApp::format_timespan(time_t start_time, time_t end_time)
 {
     tm tm_start = *localtime(&start_time);
     tm tm_end = *localtime(&end_time);
@@ -29,40 +29,6 @@ string SchedulerApp::format_timespan_simple(time_t start_time, time_t end_time)
 
     strftime(start_buf, sizeof(start_buf), "%Y.%m.%d %H:%M", &tm_start);
     strftime(end_buf, sizeof(end_buf), "%Y.%m.%d %H:%M", &tm_end);
-
-    return string(start_buf) + " - " + string(end_buf);
-}
-
-// 新的智能时间段格式化函数
-string SchedulerApp::format_timespan_complex(time_t start_time, time_t end_time)
-{
-    tm tm_start = *localtime(&start_time);
-    tm tm_end = *localtime(&end_time);
-
-    char start_buf[50];
-    char end_buf[50];
-
-    bool same_day = (tm_start.tm_year == tm_end.tm_year && tm_start.tm_yday == tm_end.tm_yday);
-    bool same_year = (tm_start.tm_year == tm_end.tm_year);
-
-    if (same_day)
-    {
-        // 同一天: 8:00 - 11:40
-        strftime(start_buf, sizeof(start_buf), "%H:%M", &tm_start);
-        strftime(end_buf, sizeof(end_buf), "%H:%M", &tm_end);
-    }
-    else if (same_year)
-    {
-        // 同年不同天: 7.9 8:00 - 7.10 8:00
-        strftime(start_buf, sizeof(start_buf), "%m.%d %H:%M", &tm_start);
-        strftime(end_buf, sizeof(end_buf), "%m.%d %H:%M", &tm_end);
-    }
-    else
-    {
-        // 不同年: 2025.12.31 8:00 - 2026.1.1 9:00
-        strftime(start_buf, sizeof(start_buf), "%Y.%m.%d %H:%M", &tm_start);
-        strftime(end_buf, sizeof(end_buf), "%Y.%m.%d %H:%M", &tm_end);
-    }
 
     return string(start_buf) + " - " + string(end_buf);
 }
@@ -1504,6 +1470,9 @@ void SchedulerApp::update_selected_day_details()
         current_list_box->remove(*child);
     }
 
+    // 获取当前时间戳，在整个更新过程中保持一致
+    time_t current_time = time(nullptr);
+
     // 使用新的跨天任务处理逻辑
     vector<TaskSegment> task_segments = get_tasks_for_day(m_selected_date);
     task_segments = sort_tasks_with_conflicts(task_segments, m_selected_date);
@@ -1551,7 +1520,7 @@ void SchedulerApp::update_selected_day_details()
         temp_task.customCategory = segment.customCategory;
         temp_task.reminderOption = segment.reminderOption;
 
-        string status = get_task_status(temp_task, time(nullptr));
+        string status = get_task_status(temp_task, current_time);
         auto status_label = Gtk::make_managed<Gtk::Label>(status);
         status_label->set_halign(Gtk::ALIGN_END);
         status_label->set_margin_end(10);
@@ -1858,14 +1827,12 @@ void SchedulerApp::on_add_task_ok_button_clicked()
 
         string status = get_task_status(*originalTask, now);
 
-        // 进行中的任务不能修改开始时间到过去
-        if (status == "进行中" && m_selected_start_time <= now)
+        // 任务不能修改开始时间到过去
+        if (status == "未开始" && m_selected_start_time <= now)
         {
-            show_message("时间错误", "进行中的任务开始时间不能设置为过去。");
+            show_message("时间错误", "任务开始时间不能设置为过去。");
             return;
         }
-
-        // 未开始的任务可以设置到过去，但要注意提醒时间的处理
     }
 
     Task newTask;
@@ -2394,18 +2361,18 @@ void SchedulerApp::update_task_list()
         return;
     m_refTreeModel->clear();
     vector<Task> tasks = m_task_manager.getAllTasks();
-    time_t now = time(nullptr);
+    time_t current_time = time(nullptr); // 使用一致的时间戳
     for (const auto &task : tasks)
     {
         Gtk::TreeModel::Row row = *(m_refTreeModel->append());
         row[m_Columns.m_col_id] = task.id;
         row[m_Columns.m_col_name] = task.name;
-        row[m_Columns.m_col_timespan] = format_timespan_simple(task.startTime, task.startTime + task.duration * 60);
+        row[m_Columns.m_col_timespan] = format_timespan(task.startTime, task.startTime + task.duration * 60);
         row[m_Columns.m_col_priority] = priority_to_string(task.priority);
         row[m_Columns.m_col_category] = category_to_string(task);
         row[m_Columns.m_col_reminder_option] = task.reminderOption;
         row[m_Columns.m_col_reminder_status] = get_reminder_status(task);
-        row[m_Columns.m_col_task_status] = get_task_status(task, now);
+        row[m_Columns.m_col_task_status] = get_task_status(task, current_time);
     }
 }
 void SchedulerApp::show_message(const string &title, const string &msg)
