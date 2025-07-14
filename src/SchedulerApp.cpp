@@ -89,6 +89,59 @@ vector<SchedulerApp::TaskSegment> SchedulerApp::get_tasks_for_day(time_t day_tim
         // 检查任务是否与当天有重叠
         if (task_end > start_of_day && task.startTime < end_of_day)
         {
+            // 分割任务
+            if (task_end == end_of_day && task.startTime < end_of_day)
+            {
+                // 第一部分：在当天显示 xx:xx-23:59
+                TaskSegment segment1;
+                segment1.id = task.id;
+                segment1.name = task.name;
+                segment1.original_start = task.startTime;
+                segment1.original_end = task_end;
+                segment1.priority = task.priority;
+                segment1.category = task.category;
+                segment1.customCategory = task.customCategory;
+                segment1.reminderOption = task.reminderOption;
+
+                segment1.display_start = max(task.startTime, start_of_day);
+                segment1.display_end = end_of_day - 60; // 23:59 (end_of_day减去1分钟)
+                segment1.is_cross_day = true;
+                segment1.is_first_segment = (task.startTime >= start_of_day);
+                segment1.has_conflict = false;
+                segment1.is_highest_priority_in_conflict = false;
+
+                segments.push_back(segment1);
+            }
+            else
+            {
+                // 普通情况的处理
+                TaskSegment segment;
+                segment.id = task.id;
+                segment.name = task.name;
+                segment.original_start = task.startTime;
+                segment.original_end = task_end;
+                segment.priority = task.priority;
+                segment.category = task.category;
+                segment.customCategory = task.customCategory;
+                segment.reminderOption = task.reminderOption;
+
+                // 确定在当天显示的时间范围
+                segment.display_start = max(task.startTime, start_of_day);
+                segment.display_end = min(task_end, end_of_day);
+
+                // 判断是否是跨天任务
+                segment.is_cross_day = (task.startTime < start_of_day) || (task_end > end_of_day);
+                segment.is_first_segment = (task.startTime >= start_of_day);
+                segment.has_conflict = false;                    // 初始化为无冲突，稍后会重新计算
+                segment.is_highest_priority_in_conflict = false; // 初始化为非最高优先级
+
+                segments.push_back(segment);
+            }
+        }
+
+        // 处理下一天的显示
+        if (task_end == start_of_day && task.startTime < start_of_day)
+        {
             TaskSegment segment;
             segment.id = task.id;
             segment.name = task.name;
@@ -99,15 +152,12 @@ vector<SchedulerApp::TaskSegment> SchedulerApp::get_tasks_for_day(time_t day_tim
             segment.customCategory = task.customCategory;
             segment.reminderOption = task.reminderOption;
 
-            // 确定在当天显示的时间范围
-            segment.display_start = max(task.startTime, start_of_day);
-            segment.display_end = min(task_end, end_of_day);
-
-            // 判断是否是跨天任务
-            segment.is_cross_day = (task.startTime < start_of_day) || (task_end > end_of_day);
-            segment.is_first_segment = (task.startTime >= start_of_day);
-            segment.has_conflict = false;                    // 初始化为无冲突，稍后会重新计算
-            segment.is_highest_priority_in_conflict = false; // 初始化为非最高优先级
+            segment.display_start = start_of_day;
+            segment.display_end = start_of_day;
+            segment.is_cross_day = true;
+            segment.is_first_segment = false;
+            segment.has_conflict = false;
+            segment.is_highest_priority_in_conflict = false;
 
             segments.push_back(segment);
         }
@@ -129,6 +179,21 @@ string SchedulerApp::format_cross_day_timespan(const TaskSegment &segment)
     char start_buf[20];
     char end_buf[20];
 
+    // 特殊处理：0:00-0:00 的情况
+    if (segment.display_start == segment.display_end)
+    {
+        tm day_tm = *localtime(&segment.display_start);
+        day_tm.tm_hour = 0;
+        day_tm.tm_min = 0;
+        day_tm.tm_sec = 0;
+        time_t start_of_day = mktime(&day_tm);
+
+        if (segment.display_start == start_of_day)
+        {
+            return "0:00 - 0:00";
+        }
+    }
+
     if (segment.is_cross_day)
     {
         // 跨天任务使用特殊格式
@@ -145,8 +210,14 @@ string SchedulerApp::format_cross_day_timespan(const TaskSegment &segment)
 
         if (segment.display_start == start_of_day) // 00:00
         {
-            strcpy(start_buf, "00:00");
+            strcpy(start_buf, "0:00");
         }
+        // 处理23:59的情况（原本在0:00结束但被分割的任务）
+        if (segment.display_end == end_of_day - 60) // 23:59
+        {
+            strcpy(end_buf, "23:59");
+        }
+        // 原有的end_of_day处理保持不变，但现在应该很少用到
         if (segment.display_end == end_of_day) // 下一天的00:00，显示为23:59
         {
             strcpy(end_buf, "23:59");
@@ -373,7 +444,12 @@ void SchedulerApp::on_activate()
             ".category-tag { background-color: @theme_accent_bg_color; color: @theme_accent_fg_color; border-radius: 10px; padding: 3px 10px; font-size: small; }"
             ".location-label { color: @theme_unfocused_fg_color; font-size: small; }"
             // 为任务小点新增的CSS样式
-            ".task-indicator { color: @theme_accent_bg_color; font-weight: bold; font-size: large; }");
+            ".task-indicator { color: @theme_accent_bg_color; font-weight: bold; font-size: large; }"
+            // 修复TreeView和ListBox选中行的文字颜色问题，确保在亮色模式下可见
+            "treeview:selected { color: @theme_fg_color; }"
+            "treeview:selected:focus { color: @theme_fg_color; }"
+            "listbox row:selected { color: @theme_fg_color; }"
+            "listbox row:selected:focus { color: @theme_fg_color; }");
         Gtk::StyleContext::add_provider_for_screen(
             Gdk::Screen::get_default(), css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
