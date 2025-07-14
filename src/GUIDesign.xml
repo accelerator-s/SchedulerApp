@@ -480,17 +480,22 @@
   </object>
   <object class="GtkTextBuffer" id="help_text_buffer">
     <property name="text" translatable="yes">软件功能简介：
-1. 账户管理：支持用户注册、登录和修改密码。密码使用MD5加密存储，保证安全。
+1. 账户管理：支持用户注册、登录、注销、修改密码、删除账户。密码使用MD5加密存储，注册和修改密码时有有效性校验。
 2. 任务管理：
-   - 添加任务：点击主界面的“添加任务”按钮，或者在主界面空白处单击右键选择弹出菜单的“添加任务”，填写任务详情。
-   - 删除任务：在主界面选中一个任务，点击“删除任务”按钮或者单击右键选择弹出菜单的“删除任务”。
-   - 任务显示：支持月视图、周视图和所有日程显示。
-3. 数据持久化：所有任务和用户信息都保存在本地文件中。
-4. 后台提醒：程序启动后，后台线程会周期性检查任务，并在到达提醒时间时弹出提醒窗口。</property>
+   - 添加任务：点击主界面的“添加任务”按钮，或在主界面空白处右键菜单选择“添加任务”，填写任务详情。
+   - 删除任务：选中任务后点击“删除任务”或右键菜单。
+   - 修改任务：右键任务项选择“修改任务”或通过相关按钮。
+   - 任务属性：包括名称、开始时间、时长、优先级、分类、提醒时间、提醒选项、任务状态。
+   - 任务显示：支持月视图、周视图和议程视图切换，支持日期导航和“今日”跳转。
+3. 多线程提醒：后台线程周期性检查任务，到达提醒时间自动弹窗提醒，支持自定义提醒时间和提醒选项。
+4. 后台静默运行：支持最小化到系统托盘，最小化后仍然具有提醒功能。
+5. 数据持久化：所有用户和任务信息均保存在本地文件，支持多用户独立数据。
+6. 帮助说明：内置帮助窗口，随时查看软件使用说明。
+7. 设置功能：支持修改密码、删除账户、注销等操作。</property>
   </object>
   <object class="GtkWindow" id="help_window">
-    <property name="width-request">850</property>
-    <property name="height-request">340</property>
+    <property name="width-request">860</property>
+    <property name="height-request">435</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">日 程 管 理 系 统 - 帮 助</property>
     <property name="modal">True</property>
@@ -661,6 +666,14 @@
   <object class="GtkMenu" id="more_menu">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menu_item_minimize">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">最小化窗口</property>
+        <property name="use-underline">True</property>
+      </object>
+    </child>
     <child>
       <object class="GtkMenuItem" id="menu_item_change_password">
         <property name="visible">True</property>

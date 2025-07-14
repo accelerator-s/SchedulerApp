@@ -479,6 +479,7 @@ void SchedulerApp::get_widgets()
 
     // --- 主界面控件 ---
     m_builder->get_widget("settings_button", settings_button);
+    m_builder->get_widget("menu_item_minimize", menu_item_minimize);
     m_builder->get_widget("menu_item_logout", menu_item_logout);
     m_builder->get_widget("menu_item_change_password", menu_item_change_password);
     m_builder->get_widget("menu_item_delete_account", menu_item_delete_account);
@@ -565,6 +566,8 @@ void SchedulerApp::connect_signals()
     m_builder->get_widget("help_close_button", help_close_button);
     help_close_button->signal_clicked().connect(sigc::mem_fun(*this, &SchedulerApp::on_help_close_button_clicked));
     // --- "设置"菜单信号 ---
+    if (menu_item_minimize)
+        menu_item_minimize->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_minimize_activated));
     if (menu_item_logout)
         menu_item_logout->signal_activate().connect(sigc::mem_fun(*this, &SchedulerApp::on_menu_item_logout_activated));
     if (menu_item_change_password)
@@ -944,6 +947,12 @@ void SchedulerApp::on_agenda_delete_task_button_clicked()
     {
         show_message("提示", "请先在列表中选择一个要删除的任务。");
     }
+}
+
+void SchedulerApp::on_menu_item_minimize_activated()
+{
+    if (main_window)
+        main_window->hide();
 }
 
 void SchedulerApp::on_menu_item_logout_activated()

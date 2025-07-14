@@ -76,6 +76,7 @@ public:
 
     // "设置" 菜单相关控件
     Gtk::MenuButton *settings_button = nullptr;
+    Gtk::MenuItem *menu_item_minimize = nullptr;
     Gtk::MenuItem *menu_item_logout = nullptr;
     Gtk::MenuItem *menu_item_change_password = nullptr;
     Gtk::MenuItem *menu_item_delete_account = nullptr;
@@ -219,6 +220,7 @@ private:
     void on_ctx_menu_revise_task_activated();
 
     // "设置" 菜单的信号处理函数
+    void on_menu_item_minimize_activated();
     void on_menu_item_logout_activated();
     void on_menu_item_change_password_activated();
     void on_menu_item_delete_account_activated();
