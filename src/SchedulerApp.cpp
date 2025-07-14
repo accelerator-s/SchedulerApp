@@ -408,14 +408,24 @@ void SchedulerApp::on_activate()
             // 新增样式
             ".task-card { background-color: @theme_bg_color; border-radius: 12px; margin: 5px 10px; padding: 15px; box-shadow: 0 2px 5px alpha(black, 0.1); }"
             ".category-tag { background-color: @theme_accent_bg_color; color: @theme_accent_fg_color; border-radius: 10px; padding: 3px 10px; font-size: small; }"
+            ".priority-highest { color: #d32f2f; }"
             ".location-label { color: @theme_unfocused_fg_color; font-size: small; }"
+            ".remind-label { color: @theme_unfocused_fg_color; font-size: small; }"
             // 为任务小点新增的CSS样式
             ".task-indicator { color: @theme_accent_bg_color; font-weight: bold; font-size: large; }"
             // 修复TreeView和ListBox选中行的文字颜色问题，确保在亮色模式下可见
             "treeview:selected { color: @theme_fg_color; }"
             "treeview:selected:focus { color: @theme_fg_color; }"
             "listbox row:selected { color: @theme_fg_color; }"
-            "listbox row:selected:focus { color: @theme_fg_color; }");
+            "listbox row:selected:focus { color: @theme_fg_color; }"
+            // 确保选中状态下所有子元素的文字颜色都正确
+            "listbox row:selected .remind-label { color: @theme_fg_color; }"
+            "listbox row:selected:focus .remind-label { color: @theme_fg_color; }"
+            // 选中状态下的分类标签和优先级标签颜色修复
+            "listbox row:selected .category-tag { color: @theme_fg_color; background-color: alpha(@theme_accent_bg_color, 0.7); }"
+            "listbox row:selected:focus .category-tag { color: @theme_fg_color; background-color: alpha(@theme_accent_bg_color, 0.7); }"
+            // 选中状态下的最高优先级标签保持红色
+            "listbox row:selected .priority-highest, listbox row:selected:focus .priority-highest { color: #d32f2f; }");
         Gtk::StyleContext::add_provider_for_screen(
             Gdk::Screen::get_default(), css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
@@ -1535,10 +1545,11 @@ void SchedulerApp::update_selected_day_details()
             priority_label->get_style_context()->add_class("category-tag");
             priority_label->set_margin_end(5);
 
-            // 如果是冲突组中的最高优先级任务，设置红色文字
+            // 如果是冲突组中的最高优先级任务，添加特殊样式类
             if (segment.is_highest_priority_in_conflict)
             {
-                priority_label->set_markup("<span color='red'><b>" + priority_to_string(segment.priority) + "</b></span>");
+                priority_label->get_style_context()->add_class("priority-highest");
+                priority_label->set_markup("<b>" + priority_to_string(segment.priority) + "</b>");
             }
 
             line1_box->pack_start(*priority_label, false, false, 0);
