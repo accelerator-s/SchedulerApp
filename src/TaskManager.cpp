@@ -110,12 +110,12 @@ void TaskManager::setCurrentUser(const string &username)
     bool changes_made = false;
     for (auto &task : tasks)
     {
-        // 条件：提醒时间有效 + 提醒时间已过去
+        // 条件：需要提醒 + 提醒时间已过去 + 未提醒
         if (task.reminderTime > 0 && task.reminderTime <= now && !task.reminded)
         {
-            task.reminded = false; // 将其标记为未提醒
-            changes_made = true;   // 标记有变动，需要存盘
-            cout << "过期提醒: 任务 '" << task.name << "' (ID: " << task.id << ") 未能成功提醒。" << endl;
+            task.reminded = true; // 将其标记为已提醒
+            changes_made = true;  // 标记有变动，需要存盘
+            cout << "过期提醒: 任务 '" << task.name << "' (ID: " << task.id << ") 未能成功提醒，被强制标记为已提醒。" << endl;
         }
     }
 

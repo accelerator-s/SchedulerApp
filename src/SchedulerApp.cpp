@@ -463,11 +463,6 @@ void SchedulerApp::on_activate()
   padding: 3px 10px;
 }
 .priority-highest { color: #d32f2f; }
-.priority-high { color: #f57c00; }
-.priority-medium { color: @theme_fg_color; }
-.priority-lowest { color: alpha(@theme_fg_color, 0.6); }
-.other-month-day,
-.location-label,
 .remind-label {
   color: alpha(@theme_fg_color, 0.6);
 }
