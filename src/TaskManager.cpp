@@ -13,6 +13,11 @@
 #include <SFML/Audio.hpp>
 #include <unistd.h> // 用于getcwd（Linux/macOS
 #include <cstdlib>  // 用于system函数
+
+#ifdef EMBEDDED_RESOURCES_ENABLED
+#include "embedded_resources.h"
+#endif
+
 using namespace std;
 // 获取当前工作目录（跨平台）
 string getCurrentWorkingDir()
@@ -77,11 +82,35 @@ void playMp3InThread(const string &mp3Path)
 // 启动音频播放线程（外部调用入口）
 void TaskManager::playNotificationSound()
 {
+#ifdef EMBEDDED_RESOURCES_ENABLED
+    // 使用嵌入的音频资源
+    thread mp3Thread([]()
+                     {
+        try {
+            // 创建临时文件路径
+            string tempPath = "/tmp/notification_temp.mp3";
+            
+            // 将嵌入的音频数据写入临时文件
+            if (EmbeddedResources::writeAudioToTempFile(tempPath)) {
+                playMp3InThread(tempPath);
+                
+                // 播放完成后删除临时文件
+                std::remove(tempPath.c_str());
+            } else {
+                cerr << "无法创建临时音频文件" << endl;
+            }
+        } catch (const exception &e) {
+            cerr << "嵌入音频播放错误: " << e.what() << endl;
+        } });
+    mp3Thread.detach();
+#else
+    // 使用外部音频文件
     const string mp3Path = "notification.mp3";
 
     // 启动新线程播放，避免阻塞
     thread mp3Thread(playMp3InThread, mp3Path);
     mp3Thread.detach(); // 线程后台运行，无需等待
+#endif
 }
 
 // TaskManager 构造函数

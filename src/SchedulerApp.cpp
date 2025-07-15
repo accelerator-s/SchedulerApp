@@ -7,6 +7,10 @@
 #include <regex>
 #include <set>
 
+#ifdef EMBEDDED_RESOURCES_ENABLED
+#include "embedded_resources.h"
+#endif
+
 using namespace std;
 
 // 辅助函数，将 time_t 转换为 Y-m-d H:M 格式的字符串
@@ -347,7 +351,14 @@ void SchedulerApp::on_activate()
 {
     try
     {
+#ifdef EMBEDDED_RESOURCES_ENABLED
+        // 使用嵌入的XML资源
+        std::string xml_content = EmbeddedResources::getXMLContent();
+        m_builder = Gtk::Builder::create_from_string(xml_content);
+#else
+        // 使用外部XML文件
         m_builder = Gtk::Builder::create_from_file("GUIDesign.xml");
+#endif
 
         get_widgets();
 
