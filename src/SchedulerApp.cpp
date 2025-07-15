@@ -439,33 +439,70 @@ void SchedulerApp::on_activate()
         get_widgets();
 
         auto css_provider = Gtk::CssProvider::create();
-        css_provider->load_from_data(
-            ".today-cell { background-color: alpha(@theme_selected_bg_color, 0.3); border-radius: 5px;}"
-            ".other-month-day { color: alpha(@theme_unfocused_fg_color, 0.4);  }"
-            ".selected-day-cell { border: 2px solid @theme_accent_bg_color; border-radius: 5px; }"
-            ".view-button-active { border-bottom-width: 3px; border-bottom-style: solid; border-bottom-color: @theme_accent_bg_color; font-weight: bold; }"
-            ".task-label { font-size: small; background-color: alpha(@theme_button_bg_color, 0.7); color: @theme_button_fg_color; border-radius: 10px; padding: 2px 6px; margin-top: 2px; margin-bottom: 2px;}"
-            // 新增样式
-            ".task-card { background-color: @theme_bg_color; border-radius: 12px; margin: 5px 10px; padding: 15px; box-shadow: 0 2px 5px alpha(black, 0.1); }"
-            ".category-tag { background-color: @theme_accent_bg_color; color: @theme_accent_fg_color; border-radius: 10px; padding: 3px 10px; font-size: small; }"
-            ".priority-highest { color: #d32f2f; }"
-            ".location-label { color: @theme_unfocused_fg_color; font-size: small; }"
-            ".remind-label { color: @theme_unfocused_fg_color; font-size: small; }"
-            // 为任务小点新增的CSS样式
-            ".task-indicator { color: @theme_accent_bg_color; font-weight: bold; font-size: large; }"
-            // 修复TreeView和ListBox选中行的文字颜色问题，确保在亮色模式下可见
-            "treeview:selected { color: @theme_fg_color; }"
-            "treeview:selected:focus { color: @theme_fg_color; }"
-            "listbox row:selected { color: @theme_fg_color; }"
-            "listbox row:selected:focus { color: @theme_fg_color; }"
-            // 确保选中状态下所有子元素的文字颜色都正确
-            "listbox row:selected .remind-label { color: @theme_fg_color; }"
-            "listbox row:selected:focus .remind-label { color: @theme_fg_color; }"
-            // 选中状态下的分类标签和优先级标签颜色修复
-            "listbox row:selected .category-tag { color: @theme_fg_color; background-color: alpha(@theme_accent_bg_color, 0.7); }"
-            "listbox row:selected:focus .category-tag { color: @theme_fg_color; background-color: alpha(@theme_accent_bg_color, 0.7); }"
-            // 选中状态下的最高优先级标签保持红色
-            "listbox row:selected .priority-highest, listbox row:selected:focus .priority-highest { color: #d32f2f; }");
+        const char *css = R"(
+.task-card {
+  background-color: @theme_bg_color;
+  border-radius: 12px;
+  margin: 5px 10px;
+  padding: 15px;
+  box-shadow: 0 2px 5px alpha(black, 0.1);
+  color: @theme_fg_color;
+}
+.task-label {
+  font-size: small;
+  background-color: alpha(@theme_button_bg_color, 0.7);
+  color: @theme_fg_color;
+  border-radius: 10px;
+  padding: 2px 6px;
+  margin: 2px 0;
+}
+.category-tag {
+  font-size: small;
+  background-color: @theme_accent_bg_color;
+  border-radius: 10px;
+  padding: 3px 10px;
+}
+.priority-highest { color: #d32f2f; }
+.priority-high { color: #f57c00; }
+.priority-medium { color: @theme_fg_color; }
+.priority-lowest { color: alpha(@theme_fg_color, 0.6); }
+.other-month-day,
+.location-label,
+.remind-label {
+  color: alpha(@theme_fg_color, 0.6);
+}
+treeview:selected,
+treeview:selected:focus,
+listbox row:selected,
+listbox row:selected:focus {
+  color: @theme_fg_color;
+}
+listbox row:selected .category-tag,
+listbox row:selected:focus .category-tag {
+  background-color: alpha(@theme_accent_bg_color, 0.7);
+  color: @theme_fg_color;
+}
+.today-cell { 
+  background-color: alpha(@theme_selected_bg_color, 0.3); 
+  border-radius: 5px;
+}
+.selected-day-cell { 
+  border: 2px solid @theme_accent_bg_color; 
+  border-radius: 5px; 
+}
+.view-button-active { 
+  border-bottom-width: 3px; 
+  border-bottom-style: solid; 
+  border-bottom-color: @theme_accent_bg_color; 
+  font-weight: bold; 
+}
+.task-indicator { 
+  color: @theme_accent_bg_color; 
+  font-weight: bold; 
+  font-size: large; 
+}
+)";
+        css_provider->load_from_data(css);
         Gtk::StyleContext::add_provider_for_screen(
             Gdk::Screen::get_default(), css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
