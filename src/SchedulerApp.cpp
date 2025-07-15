@@ -33,168 +33,99 @@ string SchedulerApp::format_timespan(time_t start_time, time_t end_time)
     return string(start_buf) + " - " + string(end_buf);
 }
 
-// 获取某一天应该显示的任务片段（处理跨天任务）
+// 获取某一天应该显示的任务片段
 vector<SchedulerApp::TaskSegment> SchedulerApp::get_tasks_for_day(time_t day_time)
 {
     vector<TaskSegment> segments;
 
-    // 获取当天的开始和结束时间
+    // 当天 00:00 与次日 00:00
     tm day_tm = *localtime(&day_time);
-    day_tm.tm_hour = 0;
-    day_tm.tm_min = 0;
-    day_tm.tm_sec = 0;
+    day_tm.tm_hour = day_tm.tm_min = day_tm.tm_sec = 0;
     time_t start_of_day = mktime(&day_tm);
-    time_t end_of_day = start_of_day + 86400; // 第二天零点
+    time_t end_of_day = start_of_day + 86400;
 
-    vector<Task> all_tasks = m_task_manager.getAllTasks();
-
-    for (const auto &task : all_tasks)
+    for (const auto &task : m_task_manager.getAllTasks())
     {
         time_t task_end = task.startTime + task.duration * 60;
 
-        // 检查任务是否与当天有重叠
+        // —— 与今日窗口有重叠的任务
         if (task_end > start_of_day && task.startTime < end_of_day)
         {
-            // 分割任务
-            if (task_end == end_of_day && task.startTime < end_of_day)
-            {
-                // 第一部分：在当天显示 xx:xx-23:59
-                TaskSegment segment1;
-                segment1.id = task.id;
-                segment1.name = task.name;
-                segment1.original_start = task.startTime;
-                segment1.original_end = task_end;
-                segment1.priority = task.priority;
-                segment1.category = task.category;
-                segment1.customCategory = task.customCategory;
-                segment1.reminderOption = task.reminderOption;
+            TaskSegment seg;
+            seg.id = task.id;
+            seg.name = task.name;
+            seg.original_start = task.startTime;
+            seg.original_end = task_end;
+            seg.priority = task.priority;
+            seg.category = task.category;
+            seg.customCategory = task.customCategory;
+            seg.reminderOption = task.reminderOption;
 
-                segment1.display_start = max(task.startTime, start_of_day);
-                segment1.display_end = end_of_day - 60; // 23:59 (end_of_day减去1分钟)
-                segment1.is_cross_day = true;
-                segment1.is_first_segment = (task.startTime >= start_of_day);
-                segment1.has_conflict = false;
-                segment1.is_highest_priority_in_conflict = false;
+            // 显示区间：最早 00:00，最晚 23:59
+            seg.display_start = max(task.startTime, start_of_day);
+            seg.display_end = min(task_end, end_of_day - 60);
 
-                segments.push_back(segment1);
-            }
-            else
-            {
-                // 普通情况的处理
-                TaskSegment segment;
-                segment.id = task.id;
-                segment.name = task.name;
-                segment.original_start = task.startTime;
-                segment.original_end = task_end;
-                segment.priority = task.priority;
-                segment.category = task.category;
-                segment.customCategory = task.customCategory;
-                segment.reminderOption = task.reminderOption;
+            seg.is_cross_day = (task.startTime < start_of_day) || (task_end > end_of_day);
+            seg.is_first_segment = (task.startTime >= start_of_day);
+            seg.has_conflict = false;
+            seg.is_highest_priority_in_conflict = false;
 
-                // 确定在当天显示的时间范围
-                segment.display_start = max(task.startTime, start_of_day);
-                segment.display_end = min(task_end, end_of_day);
-
-                // 判断是否是跨天任务
-                segment.is_cross_day = (task.startTime < start_of_day) || (task_end > end_of_day);
-                segment.is_first_segment = (task.startTime >= start_of_day);
-                segment.has_conflict = false;                    // 初始化为无冲突，稍后会重新计算
-                segment.is_highest_priority_in_conflict = false; // 初始化为非最高优先级
-
-                segments.push_back(segment);
-            }
+            segments.push_back(seg);
         }
 
-        // 处理下一天的显示
+        // —— 前一天跨到今日 00:00 的“零长度”占位
         if (task_end == start_of_day && task.startTime < start_of_day)
         {
-            TaskSegment segment;
-            segment.id = task.id;
-            segment.name = task.name;
-            segment.original_start = task.startTime;
-            segment.original_end = task_end;
-            segment.priority = task.priority;
-            segment.category = task.category;
-            segment.customCategory = task.customCategory;
-            segment.reminderOption = task.reminderOption;
+            TaskSegment seg;
+            seg.id = task.id;
+            seg.name = task.name;
+            seg.original_start = task.startTime;
+            seg.original_end = task_end;
+            seg.priority = task.priority;
+            seg.category = task.category;
+            seg.customCategory = task.customCategory;
+            seg.reminderOption = task.reminderOption;
 
-            segment.display_start = start_of_day;
-            segment.display_end = start_of_day;
-            segment.is_cross_day = true;
-            segment.is_first_segment = false;
-            segment.has_conflict = false;
-            segment.is_highest_priority_in_conflict = false;
+            seg.display_start = start_of_day;
+            seg.display_end = start_of_day;
+            seg.is_cross_day = true;
+            seg.is_first_segment = false;
+            seg.has_conflict = false;
+            seg.is_highest_priority_in_conflict = false;
 
-            segments.push_back(segment);
+            segments.push_back(seg);
         }
     }
 
-    // 按显示开始时间排序
-    sort(segments.begin(), segments.end(), [](const TaskSegment &a, const TaskSegment &b)
+    // 按 display_start 排序
+    sort(segments.begin(), segments.end(),
+         [](const TaskSegment &a, const TaskSegment &b)
          { return a.display_start < b.display_start; });
-
     return segments;
 }
 
 // 格式化跨天任务的时间显示
+// —— 只有真正的零点占位（display_start==display_end==00:00）才返回“00:00 - 00:00”
+// —— 其他一律按常规 “HH:MM - HH:MM” 输出
 string SchedulerApp::format_cross_day_timespan(const TaskSegment &segment)
 {
+    // 计算该段当天零点
+    tm day_tm = *localtime(&segment.display_start);
+    day_tm.tm_hour = day_tm.tm_min = day_tm.tm_sec = 0;
+    time_t start_of_day = mktime(&day_tm);
+
+    // 仅当真正的零点占位才特殊处理
+    if (segment.display_start == segment.display_end && segment.display_start == start_of_day)
+    {
+        return "00:00 - 00:00";
+    }
+
+    // 常规格式化
     tm start_tm = *localtime(&segment.display_start);
     tm end_tm = *localtime(&segment.display_end);
-
-    char start_buf[20];
-    char end_buf[20];
-
-    // 特殊处理：00:00-00:00 的情况
-    if (segment.display_start == segment.display_end)
-    {
-        tm day_tm = *localtime(&segment.display_start);
-        day_tm.tm_hour = 0;
-        day_tm.tm_min = 0;
-        day_tm.tm_sec = 0;
-        time_t start_of_day = mktime(&day_tm);
-
-        if (segment.display_start == start_of_day)
-        {
-            return "00:00 - 00:00";
-        }
-    }
-
-    if (segment.is_cross_day)
-    {
-        // 跨天任务使用特殊格式
-        strftime(start_buf, sizeof(start_buf), "%H:%M", &start_tm);
-        strftime(end_buf, sizeof(end_buf), "%H:%M", &end_tm);
-
-        // 计算当天的开始和结束时间
-        tm day_tm = *localtime(&segment.display_start);
-        day_tm.tm_hour = 0;
-        day_tm.tm_min = 0;
-        day_tm.tm_sec = 0;
-        time_t start_of_day = mktime(&day_tm);
-        time_t end_of_day = start_of_day + 86400;
-
-        if (segment.display_start == start_of_day) // 00:00
-        {
-            strcpy(start_buf, "00:00");
-        }
-        // 处理23:59的情况（原本在0:00结束但被分割的任务）
-        if (segment.display_end == end_of_day - 60) // 23:59
-        {
-            strcpy(end_buf, "23:59");
-        }
-        // 原有的end_of_day处理保持不变，但现在应该很少用到
-        if (segment.display_end == end_of_day) // 下一天的00:00，显示为23:59
-        {
-            strcpy(end_buf, "23:59");
-        }
-    }
-    else
-    {
-        // 非跨天任务使用正常格式
-        strftime(start_buf, sizeof(start_buf), "%H:%M", &start_tm);
-        strftime(end_buf, sizeof(end_buf), "%H:%M", &end_tm);
-    }
+    char start_buf[6], end_buf[6];
+    strftime(start_buf, sizeof(start_buf), "%H:%M", &start_tm);
+    strftime(end_buf, sizeof(end_buf), "%H:%M", &end_tm);
 
     return string(start_buf) + " - " + string(end_buf);
 }
@@ -208,85 +139,67 @@ bool SchedulerApp::tasks_overlap(const TaskSegment &task1, const TaskSegment &ta
 }
 
 // 对任务进行冲突感知排序
-vector<SchedulerApp::TaskSegment> SchedulerApp::sort_tasks_with_conflicts(vector<TaskSegment> &segments, time_t day_time)
+vector<SchedulerApp::TaskSegment> SchedulerApp::sort_tasks_with_conflicts(
+    vector<TaskSegment> &segments, time_t day_time)
 {
-    // 获取当天的开始时间，用于判断任务是否在当天开始
+    // 计算当天 00:00
     tm day_tm = *localtime(&day_time);
-    day_tm.tm_hour = 0;
-    day_tm.tm_min = 0;
-    day_tm.tm_sec = 0;
+    day_tm.tm_hour = day_tm.tm_min = day_tm.tm_sec = 0;
     time_t start_of_day = mktime(&day_tm);
 
-    // 标记每个任务的冲突状态
+    // 1. 标记冲突
     for (size_t i = 0; i < segments.size(); ++i)
     {
-        segments[i].has_conflict = false;                    // 使用新的冲突标记字段
-        segments[i].is_highest_priority_in_conflict = false; // 初始化最高优先级标记
+        segments[i].has_conflict = false;
+        segments[i].is_highest_priority_in_conflict = false;
         for (size_t j = 0; j < segments.size(); ++j)
         {
             if (i != j && tasks_overlap(segments[i], segments[j]))
             {
-                segments[i].has_conflict = true; // 标记有冲突
+                segments[i].has_conflict = true;
                 break;
             }
         }
     }
 
-    // 先找出当天所有任务的最高优先级（只考虑当天开始的任务）
-    Priority highest_priority_of_day = Priority::LOW; // 默认为最低优先级
-    bool has_today_tasks = false;
-
+    // 2. 在每个冲突组中标记最高优先级
     for (size_t i = 0; i < segments.size(); ++i)
     {
-        // 只考虑当天开始的任务
-        if (segments[i].original_start >= start_of_day)
+        if (!segments[i].has_conflict)
+            continue;
+
+        vector<TaskSegment *> conflict_group;
+        conflict_group.push_back(&segments[i]);
+        for (size_t j = 0; j < segments.size(); ++j)
         {
-            has_today_tasks = true;
-            if (static_cast<int>(segments[i].priority) < static_cast<int>(highest_priority_of_day))
-            {
-                highest_priority_of_day = segments[i].priority;
-            }
+            if (i != j && tasks_overlap(segments[i], segments[j]))
+                conflict_group.push_back(&segments[j]);
         }
+
+        // 找到组内最高（数值最小）的 priority
+        Priority highest = Priority::LOW;
+        for (auto *seg : conflict_group)
+        {
+            if (static_cast<int>(seg->priority) < static_cast<int>(highest))
+                highest = seg->priority;
+        }
+        if (segments[i].priority == highest)
+            segments[i].is_highest_priority_in_conflict = true;
     }
 
-    // 为冲突任务标记最高优先级（只有当天任务的最高优先级才会被高亮）
-    for (size_t i = 0; i < segments.size(); ++i)
-    {
-        if (segments[i].has_conflict)
-        {
-            // 只有当天任务且优先级等于当天最高优先级时才高亮
-            bool current_task_is_today = (segments[i].original_start >= start_of_day);
-
-            if (has_today_tasks && current_task_is_today && segments[i].priority == highest_priority_of_day)
-            {
-                segments[i].is_highest_priority_in_conflict = true;
-            }
-        }
-    }
-
-    // 排序逻辑：
-    // 1. 优先按开始时间排序（但要区分当天开始的任务和跨天延续的任务）
-    // 2. 开始时间相同时，按优先级排序（高->中->低）
-    sort(segments.begin(), segments.end(), [start_of_day](const TaskSegment &a, const TaskSegment &b)
+    // 3. 排序：按 display_start -> priority -> id
+    sort(segments.begin(), segments.end(),
+         [start_of_day](const TaskSegment &a, const TaskSegment &b)
          {
-        // 确定每个任务在当天的有效开始时间（排除跨天干扰）
-        time_t a_effective_start = max(a.original_start, start_of_day);
-        time_t b_effective_start = max(b.original_start, start_of_day);
-        
-        // 如果有效开始时间不同，按时间排序
-        if (a_effective_start != b_effective_start)
-        {
-            return a_effective_start < b_effective_start;
-        }
-        
-        // 开始时间相同时，按优先级排序：HIGH -> MEDIUM -> LOW
-        if (a.priority != b.priority)
-        {
-            return static_cast<int>(a.priority) < static_cast<int>(b.priority);
-        }
-        
-        // 优先级也相同时，按任务ID排序（保证稳定排序）
-        return a.id < b.id; });
+             // 有效开始直接用 display_start，23:59 不会被误当成次日 00:00
+             if (a.display_start != b.display_start)
+                 return a.display_start < b.display_start;
+             // 相同开始时间，则高优先级（数值小）靠前
+             if (a.priority != b.priority)
+                 return static_cast<int>(a.priority) < static_cast<int>(b.priority);
+             // 最后按 id 保持稳定
+             return a.id < b.id;
+         });
 
     return segments;
 }
