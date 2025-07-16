@@ -60,8 +60,6 @@ printf "\n尝试运行编译后的程序...\n\n"
 
 # 清理临时文件
 echo "清理临时文件..."
-rm -f ../../src/embedded_resources.h
-rm -f ../../src/embedded_resources.cpp
 rm -f resource_generator
 echo "临时文件清理完成"
 
@@ -97,8 +95,6 @@ printf "\n尝试运行编译后的程序...\n\n"
 
 # 清理临时文件
 echo "清理临时文件..."
-rm -f ../../src/embedded_resources.h
-rm -f ../../src/embedded_resources.cpp
 rm -f resource_generator
 echo "临时文件清理完成"
 
